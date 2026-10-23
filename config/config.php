@@ -45,8 +45,10 @@ define('MAIL_FROM', getenv('MAIL_FROM') ?: SMTP_USERNAME);
 define('MAIL_FROM_NAME', getenv('MAIL_FROM_NAME') ?: APP_NAME);
 define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: '');
 define('GEMINI_MODEL', getenv('GEMINI_MODEL') ?: 'gemini-2.0-flash');
-define('WEATHER_API_KEY', getenv('WEATHER_API_KEY') ?: '');
-define('WEATHER_CITY', getenv('WEATHER_CITY') ?: 'Lipa City,PH');
+define('WEATHER_LOCATION', getenv('WEATHER_LOCATION') ?: 'Lipa City, Batangas');
+define('WEATHER_LATITUDE', (float) (getenv('WEATHER_LATITUDE') ?: '13.9888'));
+define('WEATHER_LONGITUDE', (float) (getenv('WEATHER_LONGITUDE') ?: '121.171'));
+define('WEATHER_TIMEZONE', getenv('WEATHER_TIMEZONE') ?: 'Asia/Manila');
 
 
 try {
