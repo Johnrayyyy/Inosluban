@@ -25,27 +25,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($errors === []) {
         $statement = db()->prepare(
-            'SELECT ua.user_id, ua.password_hash, r.first_name, r.middle_name, r.last_name, r.email
+            "SELECT ua.user_id, ua.role, ua.resident_id, ua.password_hash, ua.account_status, s.staff_id,
+                    COALESCE(r.first_name, s.first_name) AS first_name,
+                    r.middle_name,
+                    COALESCE(r.last_name, s.last_name) AS last_name,
+                    COALESCE(r.email, '') AS email
              FROM user_account ua
-             JOIN resident r ON r.resident_id = ua.resident_id
+             LEFT JOIN resident r ON r.resident_id = ua.resident_id
+             LEFT JOIN staff s ON s.user_id = ua.user_id
              WHERE ua.username = :identifier OR r.email = :email
-             LIMIT 1'
+             LIMIT 1"
         );
         $statement->execute(['identifier' => $oldEmail, 'email' => strtolower($oldEmail)]);
         $user = $statement->fetch();
 
-        if ($user && password_verify($password, $user['password_hash'])) {
+        if ($user && $user['account_status'] === 'active' && password_verify($password, $user['password_hash'])) {
             session_regenerate_id(true);
             $_SESSION['user'] = [
                 'id' => (int) $user['user_id'],
+                'role' => $user['role'],
+                'resident_id' => (int) $user['resident_id'],
+                'staff_id' => (int) ($user['staff_id'] ?? 0),
                 'full_name' => trim(implode(' ', array_filter([$user['first_name'], $user['middle_name'], $user['last_name']]))),
                 'email' => $user['email'],
             ];
-            header('Location: dashboard.php');
+            header('Location: ' . (in_array($user['role'], ['staff', 'admin'], true) ? 'staff_dashboard.php' : 'dashboard.php'));
             exit;
         }
 
-        $errors[] = 'The email or password is incorrect.';
+        $errors[] = $user && $user['account_status'] !== 'active'
+            ? 'This account is inactive. Contact the administrator.'
+            : 'The email or password is incorrect.';
     }
 }
 

@@ -59,3 +59,23 @@ function require_login(): void
         exit;
     }
 }
+
+function require_resident(): void
+{
+    require_login();
+
+    if (($_SESSION['user']['role'] ?? null) !== 'resident') {
+        http_response_code(403);
+        exit('This service is available to resident accounts only.');
+    }
+}
+
+function require_staff(): void
+{
+    require_login();
+
+    if (!in_array($_SESSION['user']['role'] ?? null, ['staff', 'admin'], true)) {
+        http_response_code(403);
+        exit('This area is available to staff accounts only.');
+    }
+}

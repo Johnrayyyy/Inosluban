@@ -11,6 +11,21 @@ A beginner-friendly PHP starter project for a secure login and registration flow
 
 The project uses the PHP version included with XAMPP. Make sure the `pdo_sqlite` extension is enabled in `php.ini`.
 
+Document request confirmations and profile verification emails use PHPMailer
+over SMTP. From the project folder, install the dependency:
+
+```text
+composer install
+```
+
+For XAMPP, Apache must also receive the SMTP settings. Copy `.env.example` to
+`.env` for reference, but note that PHP does not load `.env` automatically.
+Set these variables in the Apache `VirtualHost` or XAMPP Apache configuration:
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`, and
+`MAIL_FROM_NAME`. Restart Apache after changing them. `SMTP_PASSWORD` must be
+a Gmail App Password, not the normal account password, and `MAIL_FROM` should
+normally match `SMTP_USERNAME`.
+
 ## Folder guide
 
 - `index.php` — login page and login processing.

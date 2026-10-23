@@ -88,6 +88,8 @@ CREATE TABLE user_account (
     username VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
 
+    -- Public registration inherits this value. Staff/admin accounts must be
+    -- created by authorized administration code with an explicit role.
     role VARCHAR(30) NOT NULL DEFAULT 'resident'
         CHECK (role IN ('resident', 'staff', 'admin')),
 
@@ -98,6 +100,9 @@ CREATE TABLE user_account (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_at TIMESTAMPTZ
 );
+
+COMMENT ON COLUMN user_account.role IS
+    'Defaults to resident for self-registration; staff and admin must be assigned by authorized administration code.';
 
 -- 4. STAFF
 CREATE TABLE staff (
@@ -122,8 +127,42 @@ CREATE TABLE document_request (
     assigned_staff_id INT REFERENCES staff(staff_id)
         ON DELETE SET NULL,
 
-    document_type VARCHAR(100) NOT NULL,
-    purpose TEXT,
+    document_type VARCHAR(100) NOT NULL
+        CHECK (document_type IN (
+            'Barangay Clearance',
+            'Certificate of Indigency',
+            'Certificate of Residency'
+        )),
+
+    name VARCHAR(255) NOT NULL,
+    birthday DATE NOT NULL,
+    age INT NOT NULL CHECK (age >= 0 AND age <= 150),
+    purok_address TEXT NOT NULL,
+    civil_status VARCHAR(50) NOT NULL
+        CHECK (civil_status IN (
+            'Single',
+            'Married',
+            'Widowed',
+            'Separated',
+            'Divorced'
+        )),
+
+    purpose VARCHAR(100) NOT NULL
+        CHECK (purpose IN (
+            'Travel Abroad',
+            'Legal Purpose',
+            'Loan Application',
+            'Financial/Medical',
+            'Police/NBI Clearance',
+            'Postal ID',
+            'Local Employment',
+            'School Requirement',
+            'Water/Electrical Installation',
+            'Personal Identification',
+            'Other'
+        )),
+    purpose_other TEXT,
+
     request_date TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     date_completed TIMESTAMPTZ,
 
@@ -138,6 +177,11 @@ CREATE TABLE document_request (
     CHECK (
         date_completed IS NULL
         OR date_completed >= request_date
+    ),
+
+    CHECK (
+        (purpose = 'Other' AND NULLIF(BTRIM(purpose_other), '') IS NOT NULL)
+        OR (purpose <> 'Other' AND purpose_other IS NULL)
     )
 );
 
@@ -149,9 +193,13 @@ CREATE TABLE blotter (
     assigned_staff_id INT REFERENCES staff(staff_id)
         ON DELETE SET NULL,
 
+    report_title VARCHAR(255) NOT NULL,
     category VARCHAR(100) NOT NULL,
     location TEXT,
+    latitude NUMERIC(10, 7),
+    longitude NUMERIC(10, 7),
     description TEXT NOT NULL,
+    attachment_file_path TEXT,
     report_date TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     date_resolved TIMESTAMPTZ,
 
@@ -198,6 +246,7 @@ CREATE TABLE announcement (
 
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
+    image_path TEXT,
     publication_date TIMESTAMPTZ,
     expires_at TIMESTAMPTZ,
 
@@ -210,6 +259,75 @@ CREATE TABLE announcement (
         OR expires_at >= publication_date
     )
 );
+
+-- 9. BARANGAY KNOWLEDGE BASE
+CREATE TABLE barangay_knowledge (
+    knowledge_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    category VARCHAR(100) NOT NULL,
+    question VARCHAR(255) NOT NULL,
+    answer TEXT NOT NULL,
+    source_url TEXT,
+    source_name VARCHAR(255),
+    is_published BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (category, question)
+);
+
+INSERT INTO barangay_knowledge
+    (category, question, answer, source_url, source_name)
+VALUES
+    ('Identity', 'Where is Barangay Inosloban located?',
+     'Barangay Inosloban is in the City of Lipa, Province of Batangas, CALABARZON (Region IV-A), on the island of Luzon.',
+     'https://www.philatlas.com/luzon/r04a/batangas/lipa/inosloban.html', 'PhilAtlas - Inosloban, Lipa, Batangas'),
+    ('Identity', 'What is the barangay geographic location?',
+     'Inosloban is situated at approximately 13.9888 latitude and 121.1710 longitude. Its estimated elevation is 335.2 meters (1,099.7 feet) above mean sea level.',
+     'https://www.philatlas.com/luzon/r04a/batangas/lipa/inosloban.html', 'PhilAtlas - Inosloban, Lipa, Batangas'),
+    ('Demographics', 'What was the population of Inosloban in the 2020 Census?',
+     'The population of Inosloban was 14,904 in the 2020 Census, representing approximately 4.00% of the total population of Lipa.',
+     'https://www.philatlas.com/luzon/r04a/batangas/lipa/inosloban.html', 'PhilAtlas, using Philippine Statistics Authority data'),
+    ('Demographics', 'How many households were recorded in Inosloban?',
+     'The 2015 Census recorded a household population of 12,688 in 3,186 households, with an average household size of 3.98 members.',
+     'https://www.philatlas.com/luzon/r04a/batangas/lipa/inosloban.html', 'PhilAtlas, using Philippine Statistics Authority data'),
+    ('Demographics', 'What is the largest age group in Inosloban?',
+     'Based on the 2015 Census, the 20 to 24 age group had the highest population, with 1,419 individuals.',
+     'https://www.philatlas.com/luzon/r04a/batangas/lipa/inosloban.html', 'PhilAtlas, using Philippine Statistics Authority data'),
+    ('History', 'How has the population of Inosloban changed?',
+     'The population grew from 4,463 in 1990 to 14,904 in 2020. PhilAtlas reports an annualized growth rate of 3.40% from 2015 to 2020.',
+     'https://www.philatlas.com/luzon/r04a/batangas/lipa/inosloban.html', 'PhilAtlas, using Philippine Statistics Authority data'),
+    ('Location', 'Which barangays are adjacent to Inosloban?',
+     'Inosloban shares borders with Plaridel (Lipa), San Andres (Malvar), Bugtong na Pulo (Lipa), Santiago (Malvar), Lumbang (Lipa), Pusil (Lipa), Marauoy (Lipa), and Dagatan (Lipa).',
+     'https://www.philatlas.com/luzon/r04a/batangas/lipa/inosloban.html', 'PhilAtlas - Inosloban, Lipa, Batangas'),
+    ('Identity', 'What is the alternate spelling of Barangay Inosluban?',
+     'Barangay Inosluban is also spelled Inosloban in some references and is a barangay of Lipa City, Batangas.',
+     'https://brgy.to/batangas/lipa/inosloban', 'brgy.to - Inosloban, Lipa, Batangas'),
+    ('Demographics', 'What language is commonly associated with Inosluban?',
+     'brgy.to identifies Tagalog, including the Batangas dialect, as the language associated with Inosloban.',
+     'https://brgy.to/batangas/lipa/inosloban', 'brgy.to - Inosloban, Lipa, Batangas'),
+    ('History', 'How did Barangay Inosluban get its name?',
+     'According to the history published by the City of Lipa, elders associated the name with a robbery at a woman named Ines'' home. The phrase “Si Ines, nilooban!” was later connected to the name Inosluban.',
+     'https://lipa.gov.ph/barangay-profiles/', 'City of Lipa - Barangay Profiles'),
+    ('Local Leadership', 'Who is listed in the Inosluban barangay directory?',
+     'The City of Lipa barangay directory lists Miguel L. Olgado as Chairman, Lovely V. Dungo as Secretary, and Blesilda H. Ludovice as Treasurer for Inosluban. Directory information may change, so residents should confirm current officers with the barangay office.',
+     'https://lipa.gov.ph/barangay-profiles/', 'City of Lipa - Barangay Profiles'),
+    ('Economy and Landmarks', 'What industry is specifically mentioned for Inosluban?',
+     'The City of Lipa barangay profile states that Inosluban caters the first semiconductor industry in Lipa, PKI (Pilipinas Kyohritsu, Inc.).',
+     'https://lipa.gov.ph/barangay-profiles/', 'City of Lipa - Barangay Profiles'),
+    ('Location', 'What road and coordinates are shown in the Wikimedia Inosluban photo?',
+     'The Wikimedia Commons file describes a location in Inosluban along the Manila-Batangas Road, also called Jose P. Laurel Highway, and records approximate coordinates of 13.981667 latitude and 121.169444 longitude for the image.',
+     'https://commons.wikimedia.org/wiki/File:728Inosluban,_Lipa_City,_Batangas_10.jpg', 'Wikimedia Commons - Inosluban, Lipa City, Batangas 10'),
+    ('Office Hours', 'What are the Barangay Hall of Inosluban office hours?',
+     'The supplied public office-hours information lists Monday to Friday from 8:00 AM to 5:00 PM, Saturday from 8:00 AM to 12:00 PM for basic desk services, and Sunday closed. Residents should verify schedules before visiting because hours may change.',
+     'https://www.facebook.com/61553988621875/posts/barangay-office-hoursmonday-friday-800am-500pmsaturday-800am-1200-noonsunday-clo/122124795758132954/', 'Barangay Inosluban public office-hours notice'),
+    ('Emergency Services', 'Are emergency responders and Barangay Tanods available outside office hours?',
+     'The supplied public office-hours information states that local emergency responders and Barangay Tanods remain on duty 24/7 for urgent community matters, while desk operations follow daytime office hours.',
+     'https://www.facebook.com/61553988621875/posts/barangay-office-hoursmonday-friday-800am-500pmsaturday-800am-1200-noonsunday-clo/122124795758132954/', 'Barangay Inosluban public office-hours notice'),
+    ('Contact Information', 'How can residents contact Barangay Hall of Inosluban?',
+     'The supplied public contact information lists Barangay Hall landline 404-3035, Barangay Outpost landline 233-2499, and Barangay Outpost mobile 0966-854-7444. Residents should verify contact details through the official channels before relying on them.',
+     'https://www.facebook.com/61553651555583/posts/updated-contact-numbersbarangay-hall-404-3035barangay-outpost-landline-233-2499c/122190825068121718/', 'Brgy. Inosluban | Lipa City public contact notice'),
+    ('Contact Information', 'What is the official Facebook page of Barangay Inosluban?',
+     'The supplied public contact information identifies “Brgy. Inosluban | Lipa City” as the official Facebook page: https://www.facebook.com/p/Brgy-Inosluban-61553651555583/.',
+     'https://www.facebook.com/p/Brgy-Inosluban-61553651555583/', 'Brgy. Inosluban | Lipa City official Facebook page')
+ON CONFLICT (category, question) DO NOTHING;
 
 -- 9. DISASTER ALERT
 CREATE TABLE disaster_preparedness (
@@ -274,8 +392,33 @@ CREATE TABLE audit_log (
     action_timestamp TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 12. STAFF TIME SHEETS
+CREATE TABLE staff_time_log (
+    time_log_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES user_account(user_id) ON DELETE CASCADE,
+    clock_in TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    clock_out TIMESTAMPTZ,
+    total_seconds INT,
+    CHECK (clock_out IS NULL OR clock_out >= clock_in)
+);
+
+CREATE TABLE weather_advisory (
+    advisory_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    created_by_user_id INT REFERENCES user_account(user_id) ON DELETE SET NULL,
+    location VARCHAR(255) NOT NULL,
+    weather_summary TEXT NOT NULL,
+    temperature NUMERIC(6,2),
+    severity VARCHAR(30) NOT NULL DEFAULT 'Information',
+    recommendation TEXT NOT NULL,
+    source_url TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMPTZ,
+    status VARCHAR(30) NOT NULL DEFAULT 'Pending'
+        CHECK (status IN ('Pending', 'Approved', 'Dismissed'))
+);
+
 -- =========================================================
--- 12. INDEXES FOR COMMON SEARCHES AND DASHBOARDS
+-- 13. INDEXES FOR COMMON SEARCHES AND DASHBOARDS
 -- =========================================================
 
 CREATE INDEX idx_resident_name

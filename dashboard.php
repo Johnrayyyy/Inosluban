@@ -1,6 +1,30 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/resident_notifications.php';
 require_login();
+if (in_array($_SESSION['user']['role'] ?? '', ['staff', 'admin'], true)) {
+    header('Location: staff_dashboard.php');
+    exit;
+}
+
+try {
+    $announcementsStatement = db()->query(
+        "SELECT announcement_id, title, publication_date
+         FROM announcement
+         WHERE status = 'Published'
+           AND (publication_date IS NULL OR publication_date <= CURRENT_TIMESTAMP)
+           AND (expires_at IS NULL OR expires_at >= CURRENT_TIMESTAMP)
+         ORDER BY COALESCE(publication_date, CURRENT_TIMESTAMP) DESC
+         LIMIT 3"
+    );
+    $latestAnnouncements = $announcementsStatement->fetchAll();
+    $residentNotifications = resident_notifications((int) $_SESSION['user']['resident_id']);
+} catch (PDOException $exception) {
+    error_log('Dashboard announcements database error: ' . $exception->getMessage());
+    http_response_code(500);
+    exit('The dashboard is temporarily unavailable.');
+}
+
 $pageTitle = 'Resident dashboard';
 require __DIR__ . '/includes/header.php';
 ?>
@@ -10,17 +34,7 @@ require __DIR__ . '/includes/header.php';
             <img src="assets/images/logo.png" alt="Barangay Inosluban logo">
             <span><strong>BARANGAY INOSLUBAN</strong><small>LIPA CITY, BATANGAS</small><small>Community Portal</small></span>
         </a>
-        <nav class="dashboard-nav" aria-label="Resident portal navigation">
-            <a class="active" href="dashboard.php"><i class="bi bi-house-fill"></i>Home</a>
-            <a href="#services"><i class="bi bi-file-earmark-text"></i>Request Document</a>
-            <a href="#blotter"><i class="bi bi-shield-check"></i>Blotter</a>
-            <a href="#appointment"><i class="bi bi-calendar3"></i>Appointment</a>
-            <a href="#announcements"><i class="bi bi-megaphone"></i>Announcements</a>
-            <span class="dashboard-nav-label">MORE</span>
-            <a href="#profile"><i class="bi bi-person"></i>My Profile</a>
-            <a href="#settings"><i class="bi bi-gear"></i>Settings</a>
-            <a href="logout.php"><i class="bi bi-box-arrow-right"></i>Logout</a>
-        </nav>
+        <?php require __DIR__ . '/includes/resident_nav.php'; ?>
         <div class="dashboard-sidebar-footer">
             <img src="assets/images/logo.png" alt="">
             <span><strong>BARANGAY INOSLUBAN</strong><small>LIPA CITY, BATANGAS</small></span>
@@ -29,7 +43,28 @@ require __DIR__ . '/includes/header.php';
     <section class="dashboard-content">
         <header class="dashboard-topbar">
             <div class="dashboard-search"><i class="bi bi-search"></i><input type="search" placeholder="Search services, announcements, or information..." aria-label="Search portal"></div>
-            <div class="dashboard-user"><i class="bi bi-bell-fill"></i><span class="notification-dot">3</span><span class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e($_SESSION['user']['full_name']) ?></strong><small>Resident</small></span><i class="bi bi-chevron-down"></i></div>
+            <div class="dashboard-user">
+                <details class="notification-menu">
+                    <summary class="notification-trigger" aria-label="View notifications">
+                        <i class="bi bi-bell-fill"></i>
+                        <span class="notification-dot"><?= (int) $residentNotifications['count'] ?></span>
+                    </summary>
+                    <div class="notification-panel">
+                        <div class="notification-panel-heading"><strong>Notifications</strong><small><?= (int) $residentNotifications['count'] ?> total</small></div>
+                        <?php if ($residentNotifications['items'] === []): ?>
+                            <p class="notification-empty">You have no new announcements or document updates.</p>
+                        <?php else: ?>
+                            <?php foreach ($residentNotifications['items'] as $notification): ?>
+                                <a class="notification-item" href="<?= e($notification['url']) ?>">
+                                    <span class="notification-icon"><i class="bi <?= e($notification['icon']) ?>"></i></span>
+                                    <span><strong><?= e($notification['title']) ?></strong><small><?= e($notification['message']) ?></small><em><?= e((new DateTime($notification['date'] ?? 'now'))->format('M j, Y')) ?></em></span>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </details>
+                <span class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e($_SESSION['user']['full_name']) ?></strong><small>Resident</small></span><i class="bi bi-chevron-down"></i>
+            </div>
         </header>
         <div class="dashboard-main">
             <div class="dashboard-welcome">
@@ -41,14 +76,14 @@ require __DIR__ . '/includes/header.php';
             </div>
             <div class="dashboard-section-heading"><h2>Barangay Services</h2><a href="#services">View all <i class="bi bi-arrow-right"></i></a></div>
             <div class="dashboard-service-grid" id="services">
-                <a class="dashboard-service-card" href="#request"><i class="bi bi-file-earmark-text"></i><h3>Request Document</h3><p>Apply for barangay clearance, certificates, and other documents.</p><span>Go to Request <i class="bi bi-arrow-right"></i></span></a>
-                <a class="dashboard-service-card" href="#blotter"><i class="bi bi-shield-check"></i><h3>Blotter</h3><p>Report incidents, concerns, or request assistance.</p><span>Go to Blotter <i class="bi bi-arrow-right"></i></span></a>
-                <a class="dashboard-service-card" href="#appointment"><i class="bi bi-calendar3"></i><h3>Appointment</h3><p>Book an appointment with barangay officials or services.</p><span>Go to Appointment <i class="bi bi-arrow-right"></i></span></a>
-                <a class="dashboard-service-card" href="#announcements"><i class="bi bi-megaphone"></i><h3>Announcements</h3><p>View the latest updates, notices, and events.</p><span>Go to Announcements <i class="bi bi-arrow-right"></i></span></a>
+                <a class="dashboard-service-card" href="document_request.php"><i class="bi bi-file-earmark-text"></i><h3>Request Document</h3><p>Apply for barangay clearance, certificates, and other documents.</p><span>Go to Request <i class="bi bi-arrow-right"></i></span></a>
+                <a class="dashboard-service-card" href="blotter.php"><i class="bi bi-shield-check"></i><h3>Blotter</h3><p>Report incidents, concerns, or request assistance.</p><span>Go to Blotter <i class="bi bi-arrow-right"></i></span></a>
+                <a class="dashboard-service-card" href="appointment.php"><i class="bi bi-calendar3"></i><h3>Appointment</h3><p>Book an appointment with barangay officials or services.</p><span>Go to Appointment <i class="bi bi-arrow-right"></i></span></a>
+                <a class="dashboard-service-card" href="announcement.php"><i class="bi bi-megaphone"></i><h3>Announcements</h3><p>View the latest updates, notices, and events.</p><span>Go to Announcements <i class="bi bi-arrow-right"></i></span></a>
             </div>
             <div class="dashboard-lower-grid">
-                <section class="dashboard-panel announcements-panel" id="announcements"><div class="dashboard-panel-heading"><h2><i class="bi bi-megaphone"></i> Latest Announcements</h2><a href="#announcements">View All <i class="bi bi-arrow-right"></i></a></div><div class="announcement-item"><i class="bi bi-cloud-rain"></i><span><strong>Class Suspension Due to Heavy Rainfall</strong><small>Oct 12, 2025</small></span><i class="bi bi-chevron-right"></i></div><div class="announcement-item"><i class="bi bi-heart-pulse"></i><span><strong>Free Medical Check-up for Senior Citizens</strong><small>Oct 10, 2025</small></span><i class="bi bi-chevron-right"></i></div><div class="announcement-item"><i class="bi bi-people"></i><span><strong>Barangay Assembly Meeting</strong><small>Oct 8, 2025</small></span><i class="bi bi-chevron-right"></i></div></section>
-                <section class="dashboard-panel quick-panel"><div class="dashboard-panel-heading"><h2><i class="bi bi-grid"></i> Quick Access</h2></div><div class="quick-grid"><a href="#request"><i class="bi bi-file-earmark-text"></i>Request Document</a><a href="#blotter"><i class="bi bi-shield-check"></i>Blotter</a><a href="#appointment"><i class="bi bi-calendar3"></i>Appointment</a><a href="#announcements"><i class="bi bi-megaphone"></i>Announcements</a></div></section>
+                <section class="dashboard-panel announcements-panel" id="announcements"><div class="dashboard-panel-heading"><h2><i class="bi bi-megaphone"></i> Latest Announcements</h2><a href="announcement.php">View All <i class="bi bi-arrow-right"></i></a></div><?php foreach ($latestAnnouncements as $announcement): ?><a class="announcement-item" href="announcement.php?id=<?= (int) $announcement['announcement_id'] ?>"><i class="bi bi-megaphone"></i><span><strong><?= e($announcement['title']) ?></strong><small><?= e((new DateTime($announcement['publication_date'] ?? 'now'))->format('M j, Y')) ?></small></span><i class="bi bi-chevron-right"></i></a><?php endforeach; ?><?php if ($latestAnnouncements === []): ?><p class="announcement-dashboard-empty">No published announcements at this time.</p><?php endif; ?></section>
+                <section class="dashboard-panel quick-panel"><div class="dashboard-panel-heading"><h2><i class="bi bi-grid"></i> Quick Access</h2></div><div class="quick-grid"><a href="document_request.php"><i class="bi bi-file-earmark-text"></i>Request Document</a><a href="blotter.php"><i class="bi bi-shield-check"></i>Blotter</a><a href="appointment.php"><i class="bi bi-calendar3"></i>Appointment</a><a href="announcement.php"><i class="bi bi-megaphone"></i>Announcements</a></div></section>
                 <section class="dashboard-panel portal-panel"><img src="assets/images/logo.png" alt="Barangay Inosluban logo"><strong>BARANGAY INOSLUBAN</strong><small>LIPA CITY, BATANGAS</small><p>“Bayanihan, disiplina, para sa isang mas maunlad na Inosluban.”</p><h3>Quick Stats</h3><span><i class="bi bi-people-fill"></i>Total Residents <b>8,666</b></span><span><i class="bi bi-house-fill"></i>Total Households <b>2,114</b></span></section>
             </div>
         </div>
