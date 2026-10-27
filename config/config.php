@@ -3,13 +3,6 @@ declare(strict_types=1);
 
 const APP_NAME = 'Barangay Inosluban';
 
-
-const DB_HOST       = 'localhost';
-const DB_PORT       = '5432';
-const DB_NAME       = 'Portal_Inosluban';
-const DB_USER       = 'postgres';
-const DB_PASSWORD   = 'admin';
-
 function load_local_environment(string $path): void
 {
     if (!is_file($path) || !is_readable($path)) {
@@ -36,6 +29,12 @@ function load_local_environment(string $path): void
 
 load_local_environment(dirname(__DIR__) . '/.env');
 
+define('DB_HOST', getenv('DB_HOST') ?: '');
+define('DB_PORT', getenv('DB_PORT') ?: '5432');
+define('DB_NAME', getenv('DB_NAME') ?: '');
+define('DB_USER', getenv('DB_USER') ?: '');
+define('DB_PASSWORD', getenv('DB_PASSWORD') ?: '');
+
 define('APP_BASE_URL', getenv('APP_BASE_URL') ?: 'http://localhost/PHP_project');
 define('SMTP_HOST', getenv('SMTP_HOST') ?: 'smtp.gmail.com');
 define('SMTP_PORT', (int) (getenv('SMTP_PORT') ?: 587));
@@ -49,17 +48,3 @@ define('WEATHER_LOCATION', getenv('WEATHER_LOCATION') ?: 'Lipa City, Batangas');
 define('WEATHER_LATITUDE', (float) (getenv('WEATHER_LATITUDE') ?: '13.9888'));
 define('WEATHER_LONGITUDE', (float) (getenv('WEATHER_LONGITUDE') ?: '121.171'));
 define('WEATHER_TIMEZONE', getenv('WEATHER_TIMEZONE') ?: 'Asia/Manila');
-
-
-try {
-    $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";";
-
-    $pdo = new PDO($dsn, DB_USER, DB_PASSWORD, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-    ]);
-}
-
-catch (PDOException $e) {
-    die("DAatabase Connection failed: " . $e->getMessage());
-}
