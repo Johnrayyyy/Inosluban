@@ -18,13 +18,18 @@ function sendEmail(
         error_log('Email error: recipient address is invalid.');
         return false;
     }
-    if (
-        !class_exists(PHPMailer::class)
-        || SMTP_USERNAME === ''
-        || SMTP_PASSWORD === ''
-        || MAIL_FROM === ''
-    ) {
+    if (!class_exists(PHPMailer::class) || SMTP_USERNAME === '' || SMTP_PASSWORD === '' || MAIL_FROM === '') {
         error_log('Email error: PHPMailer or SMTP configuration is missing.');
+        return false;
+    }
+
+    $isBrevo = strtolower(SMTP_HOST) === 'smtp-relay.brevo.com';
+    if (!filter_var(MAIL_FROM, FILTER_VALIDATE_EMAIL)) {
+        error_log('Email error: MAIL_FROM must be a valid sender email address.');
+        return false;
+    }
+    if ($isBrevo && strcasecmp(MAIL_FROM, SMTP_USERNAME) === 0) {
+        error_log('Email error: set MAIL_FROM to a verified sender address in Brevo.');
         return false;
     }
 
@@ -38,7 +43,7 @@ function sendEmail(
         $mail->Username = SMTP_USERNAME;
         $mail->Password = preg_replace('/\s+/', '', SMTP_PASSWORD);
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = SMTP_PORT;
+        $mail->Port = $isBrevo && SMTP_PORT === 587 ? 2525 : SMTP_PORT;
         $mail->Timeout = 15;
         $mail->CharSet = 'UTF-8';
 
@@ -53,7 +58,7 @@ function sendEmail(
         $mail->send();
         return true;
 
-    } catch (\Throwable $e) {
+    } catch (\PHPMailer\PHPMailer\Exception $e) {
         error_log('Email error: ' . $e->getMessage());
         return false;
     }

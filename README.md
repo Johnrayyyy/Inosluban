@@ -33,10 +33,12 @@ The app also supports individual `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
 and `DB_PASSWORD` settings instead of `DATABASE_URL`. For local XAMPP, create
 a project-root `.env` file and use Render's external database connection
 details. Never commit `.env` or include it in the Docker image. For email, set
-`SMTP_HOST`,
-`SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`, and
-`MAIL_FROM_NAME`; `SMTP_PASSWORD` must be a Gmail App Password, not the normal
-account password, and `MAIL_FROM` should normally match `SMTP_USERNAME`.
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`, and
+`MAIL_FROM_NAME`. For Brevo, use `smtp-relay.brevo.com`, your Brevo SMTP login
+and SMTP key, and a sender email verified in Brevo as `MAIL_FROM`. On Render,
+the app automatically switches Brevo's configured port `587` to `2525`
+because Render blocks outbound SMTP on port `587`. Other SMTP providers keep
+using their configured port.
 
 ## Folder guide
 
