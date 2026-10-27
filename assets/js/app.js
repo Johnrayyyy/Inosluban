@@ -14,7 +14,7 @@ const requestModule = document.querySelector('.request-module');
 const themeToggle = document.querySelector('[data-theme-toggle]');
 if (document.body) {
     const savedTheme = window.localStorage.getItem('request-theme');
-    if (savedTheme === 'dark') {
+    if (savedTheme === 'dark' && requestModule) {
         requestModule.dataset.theme = 'dark';
     }
 
@@ -100,13 +100,16 @@ if (requestModule && themeToggle) {
 
 const staffTimer = document.querySelector('[data-staff-timer]');
 if (staffTimer) {
-    const clockIn = Number(staffTimer.dataset.clockIn) * 1000;
+    const clockIn = Number(staffTimer.dataset.clockIn);
+    const serverNow = Number(staffTimer.dataset.serverNow);
+    const elapsedAtLoad = serverNow - clockIn;
+    const startedAt = performance.now();
     const updateStaffTimer = () => {
-        if (!Number.isFinite(clockIn)) {
+        if (!Number.isFinite(elapsedAtLoad) || elapsedAtLoad < 0) {
             staffTimer.textContent = '--:--:--';
             return;
         }
-        const elapsed = Math.max(0, Math.floor((Date.now() - clockIn) / 1000));
+        const elapsed = Math.floor(elapsedAtLoad + (performance.now() - startedAt) / 1000);
         const hours = String(Math.floor(elapsed / 3600)).padStart(2, '0');
         const minutes = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
         const seconds = String(elapsed % 60).padStart(2, '0');
