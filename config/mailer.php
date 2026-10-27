@@ -18,8 +18,12 @@ function sendEmail(
         error_log('Email error: recipient address is invalid.');
         return false;
     }
-    if (!class_exists(PHPMailer::class) || SMTP_USERNAME === '' || SMTP_PASSWORD === '' || MAIL_FROM === '') {
-        error_log('Email error: PHPMailer or SMTP configuration is missing.');
+    if (!class_exists(PHPMailer::class)) {
+        error_log('Email error: PHPMailer is not installed. Run Composer install during deployment.');
+        return false;
+    }
+    if (SMTP_USERNAME === '' || SMTP_PASSWORD === '' || MAIL_FROM === '') {
+        error_log('Email error: SMTP_USERNAME, SMTP_PASSWORD, and MAIL_FROM must be configured.');
         return false;
     }
 

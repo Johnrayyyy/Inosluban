@@ -12,7 +12,9 @@ A beginner-friendly PHP starter project for a secure login and registration flow
 The project uses the PHP version included with XAMPP. Make sure the `pdo_pgsql` extension is enabled in `php.ini`.
 
 Document request confirmations and profile verification emails use PHPMailer
-over SMTP. From the project folder, install the dependency:
+over SMTP. Docker deployments install Composer dependencies as part of the
+image build. For a local XAMPP setup, install the dependency from the project
+folder:
 
 ```text
 composer install
