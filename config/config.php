@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 const APP_NAME = 'Barangay Inosluban';
 
-function load_local_environment(string $path): void
+function load_environment_file(string $path): void
 {
     if (!is_file($path) || !is_readable($path)) {
         return;
@@ -27,7 +27,8 @@ function load_local_environment(string $path): void
     }
 }
 
-load_local_environment(dirname(__DIR__) . '/.env');
+load_environment_file('/etc/secrets/.env');
+load_environment_file(dirname(__DIR__) . '/.env');
 
 $databaseUrlParts = [];
 $databaseUrl = getenv('DATABASE_URL');
@@ -53,6 +54,7 @@ define('DB_USER', getenv('DB_USER') ?: rawurldecode($databaseUrlParts['user'] ??
 define('DB_PASSWORD', getenv('DB_PASSWORD') ?: rawurldecode($databaseUrlParts['pass'] ?? ''));
 
 define('APP_BASE_URL', getenv('APP_BASE_URL') ?: 'http://localhost/PHP_project');
+
 define('SMTP_HOST', getenv('SMTP_HOST') ?: 'smtp.gmail.com');
 define('SMTP_PORT', (int) (getenv('SMTP_PORT') ?: 587));
 define('SMTP_USERNAME', getenv('SMTP_USERNAME') ?: '');
@@ -61,6 +63,7 @@ define('MAIL_FROM', getenv('MAIL_FROM') ?: SMTP_USERNAME);
 define('MAIL_FROM_NAME', getenv('MAIL_FROM_NAME') ?: APP_NAME);
 define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: '');
 define('GEMINI_MODEL', getenv('GEMINI_MODEL') ?: 'gemini-2.0-flash');
+
 define('WEATHER_LOCATION', getenv('WEATHER_LOCATION') ?: 'Lipa City, Batangas');
 define('WEATHER_LATITUDE', (float) (getenv('WEATHER_LATITUDE') ?: '13.9888'));
 define('WEATHER_LONGITUDE', (float) (getenv('WEATHER_LONGITUDE') ?: '121.171'));

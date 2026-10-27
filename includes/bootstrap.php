@@ -18,7 +18,7 @@ function db(): PDO
     }
 
     if (DB_HOST === '' || DB_NAME === '' || DB_USER === '' || DB_PASSWORD === '') {
-        throw new RuntimeException('Database configuration is incomplete. Set DB_HOST, DB_NAME, DB_USER, and DB_PASSWORD.');
+        throw new RuntimeException('Database configuration is incomplete. Set DATABASE_URL or all DB_* values in the Render secret file or service environment.');
     }
 
     $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";sslmode=require";

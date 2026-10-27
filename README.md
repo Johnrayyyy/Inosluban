@@ -18,16 +18,22 @@ over SMTP. From the project folder, install the dependency:
 composer install
 ```
 
-The application loads variables from the project-root `.env` file; variables
-already provided by the server environment take precedence. For local XAMPP,
-copy `.env.example` to `.env` and set the `DB_HOST`, `DB_PORT`, `DB_NAME`,
-`DB_USER`, and `DB_PASSWORD` values using Render's external connection details.
-For a web service hosted on Render, open its **Environment** settings and add
-`DATABASE_URL` with the database's **Internal Database URL** (the service and
-database must be in the same region). The app also accepts the individual
-`DB_*` variables instead of `DATABASE_URL`, but don't set both forms to
-different connection details. Keep `.env` private and never commit it. For
-email, set `SMTP_HOST`,
+The application loads configuration from Render's `/etc/secrets/.env` file
+first, then the project-root `.env` file. Values set in the service's
+environment take precedence over both files. For a Render-hosted web service,
+open **Environment → Secret Files**, add a file named `.env`, and put your
+settings in it. Use the database's **Internal Database URL** when the web
+service and database are in the same region:
+
+```text
+DATABASE_URL=postgresql://username:password@hostname:5432/database
+```
+
+The app also supports individual `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
+and `DB_PASSWORD` settings instead of `DATABASE_URL`. For local XAMPP, create
+a project-root `.env` file and use Render's external database connection
+details. Never commit `.env` or include it in the Docker image. For email, set
+`SMTP_HOST`,
 `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`, and
 `MAIL_FROM_NAME`; `SMTP_PASSWORD` must be a Gmail App Password, not the normal
 account password, and `MAIL_FROM` should normally match `SMTP_USERNAME`.
