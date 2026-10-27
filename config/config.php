@@ -29,11 +29,28 @@ function load_local_environment(string $path): void
 
 load_local_environment(dirname(__DIR__) . '/.env');
 
-define('DB_HOST', getenv('DB_HOST') ?: '');
-define('DB_PORT', getenv('DB_PORT') ?: '5432');
-define('DB_NAME', getenv('DB_NAME') ?: '');
-define('DB_USER', getenv('DB_USER') ?: '');
-define('DB_PASSWORD', getenv('DB_PASSWORD') ?: '');
+$databaseUrlParts = [];
+$databaseUrl = getenv('DATABASE_URL');
+if ($databaseUrl !== false && $databaseUrl !== '') {
+    try {
+        $databaseUrlParts = parse_url($databaseUrl);
+    } catch (ValueError $error) {
+        throw new RuntimeException('DATABASE_URL is not a valid PostgreSQL connection URL.', 0, $error);
+    }
+
+    if (
+        !is_array($databaseUrlParts)
+        || !in_array(strtolower($databaseUrlParts['scheme'] ?? ''), ['postgres', 'postgresql'], true)
+    ) {
+        throw new RuntimeException('DATABASE_URL must be a valid PostgreSQL connection URL.');
+    }
+}
+
+define('DB_HOST', getenv('DB_HOST') ?: ($databaseUrlParts['host'] ?? ''));
+define('DB_PORT', getenv('DB_PORT') ?: (string) ($databaseUrlParts['port'] ?? 5432));
+define('DB_NAME', getenv('DB_NAME') ?: rawurldecode(ltrim($databaseUrlParts['path'] ?? '', '/')));
+define('DB_USER', getenv('DB_USER') ?: rawurldecode($databaseUrlParts['user'] ?? ''));
+define('DB_PASSWORD', getenv('DB_PASSWORD') ?: rawurldecode($databaseUrlParts['pass'] ?? ''));
 
 define('APP_BASE_URL', getenv('APP_BASE_URL') ?: 'http://localhost/PHP_project');
 define('SMTP_HOST', getenv('SMTP_HOST') ?: 'smtp.gmail.com');

@@ -19,12 +19,15 @@ composer install
 ```
 
 The application loads variables from the project-root `.env` file; variables
-already provided by the server environment take precedence. Copy
-`.env.example` to `.env` as a starting point, then set `DB_HOST`, `DB_PORT`,
-`DB_NAME`, `DB_USER`, and `DB_PASSWORD` using the connection details from
-Render. Use the external database connection details for local XAMPP and the
-internal connection details for an app hosted on Render in the same region.
-Keep `.env` private and never commit it. For email, set `SMTP_HOST`,
+already provided by the server environment take precedence. For local XAMPP,
+copy `.env.example` to `.env` and set the `DB_HOST`, `DB_PORT`, `DB_NAME`,
+`DB_USER`, and `DB_PASSWORD` values using Render's external connection details.
+For a web service hosted on Render, open its **Environment** settings and add
+`DATABASE_URL` with the database's **Internal Database URL** (the service and
+database must be in the same region). The app also accepts the individual
+`DB_*` variables instead of `DATABASE_URL`, but don't set both forms to
+different connection details. Keep `.env` private and never commit it. For
+email, set `SMTP_HOST`,
 `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`, and
 `MAIL_FROM_NAME`; `SMTP_PASSWORD` must be a Gmail App Password, not the normal
 account password, and `MAIL_FROM` should normally match `SMTP_USERNAME`.
