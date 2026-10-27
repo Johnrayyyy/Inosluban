@@ -100,8 +100,12 @@ if (requestModule && themeToggle) {
 
 const staffTimer = document.querySelector('[data-staff-timer]');
 if (staffTimer) {
-    const clockIn = new Date(staffTimer.dataset.clockIn).getTime();
+    const clockIn = Number(staffTimer.dataset.clockIn) * 1000;
     const updateStaffTimer = () => {
+        if (!Number.isFinite(clockIn)) {
+            staffTimer.textContent = '--:--:--';
+            return;
+        }
         const elapsed = Math.max(0, Math.floor((Date.now() - clockIn) / 1000));
         const hours = String(Math.floor(elapsed / 3600)).padStart(2, '0');
         const minutes = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');

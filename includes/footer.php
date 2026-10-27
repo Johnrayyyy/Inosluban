@@ -14,6 +14,6 @@
     <form class="ai-chat-form" data-ai-chat-form><input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>"><input name="message" type="text" maxlength="4000" placeholder="Type your message..." autocomplete="off" required><button type="submit" aria-label="Send message"><i class="bi bi-send-fill"></i></button></form>
 </section>
 <?php endif; ?>
-<script src="assets/js/app.js"></script>
+<script src="assets/js/app.js?v=<?= filemtime(__DIR__ . '/../assets/js/app.js') ?>"></script>
 </body>
 </html>
