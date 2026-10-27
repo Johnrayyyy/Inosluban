@@ -30,6 +30,9 @@ function load_environment_file(string $path): void
 load_environment_file('/etc/secrets/.env');
 load_environment_file(dirname(__DIR__) . '/.env');
 
+define('APP_TIMEZONE', getenv('APP_TIMEZONE') ?: 'Asia/Manila');
+date_default_timezone_set(APP_TIMEZONE);
+
 $databaseUrlParts = [];
 $databaseUrl = getenv('DATABASE_URL');
 if ($databaseUrl !== false && $databaseUrl !== '') {
@@ -67,4 +70,4 @@ define('GEMINI_MODEL', getenv('GEMINI_MODEL') ?: 'gemini-2.0-flash');
 define('WEATHER_LOCATION', getenv('WEATHER_LOCATION') ?: 'Lipa City, Batangas');
 define('WEATHER_LATITUDE', (float) (getenv('WEATHER_LATITUDE') ?: '13.9888'));
 define('WEATHER_LONGITUDE', (float) (getenv('WEATHER_LONGITUDE') ?: '121.171'));
-define('WEATHER_TIMEZONE', getenv('WEATHER_TIMEZONE') ?: 'Asia/Manila');
+define('WEATHER_TIMEZONE', getenv('WEATHER_TIMEZONE') ?: APP_TIMEZONE);
