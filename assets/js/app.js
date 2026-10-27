@@ -102,14 +102,16 @@ const staffTimer = document.querySelector('[data-staff-timer]');
 if (staffTimer) {
     const clockIn = Number(staffTimer.dataset.clockIn);
     const serverNow = Number(staffTimer.dataset.serverNow);
-    const elapsedAtLoad = serverNow - clockIn;
+    const dayStart = Number(staffTimer.dataset.dayStart);
     const startedAt = performance.now();
     const updateStaffTimer = () => {
-        if (!Number.isFinite(elapsedAtLoad) || elapsedAtLoad < 0) {
+        if (![clockIn, serverNow, dayStart].every(Number.isFinite) || serverNow < clockIn || serverNow < dayStart) {
             staffTimer.textContent = '--:--:--';
             return;
         }
-        const elapsed = Math.floor(elapsedAtLoad + (performance.now() - startedAt) / 1000);
+        const now = serverNow + (performance.now() - startedAt) / 1000;
+        const currentDayStart = dayStart + Math.floor((now - dayStart) / 86400) * 86400;
+        const elapsed = Math.floor(Math.max(0, now - Math.max(clockIn, currentDayStart)));
         const hours = String(Math.floor(elapsed / 3600)).padStart(2, '0');
         const minutes = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
         const seconds = String(elapsed % 60).padStart(2, '0');

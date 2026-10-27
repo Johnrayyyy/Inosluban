@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/staff.php';
 require_once __DIR__ . '/config/config.php';
 
 if (is_logged_in()) {
@@ -40,6 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $statement->fetch();
 
         if ($user && $user['account_status'] === 'active' && password_verify($password, $user['password_hash'])) {
+            $timeLog = $user['role'] === 'staff'
+                ? staff_start_time_log((int) $user['user_id'])
+                : null;
             session_regenerate_id(true);
             $_SESSION['user'] = [
                 'id' => (int) $user['user_id'],
@@ -49,6 +53,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'full_name' => trim(implode(' ', array_filter([$user['first_name'], $user['middle_name'], $user['last_name']]))),
                 'email' => $user['email'],
             ];
+            if ($timeLog !== null) {
+                $_SESSION['staff_time_log_id'] = (int) $timeLog['time_log_id'];
+            }
             header('Location: ' . (in_array($user['role'], ['staff', 'admin'], true) ? 'staff_dashboard.php' : 'dashboard.php'));
             exit;
         }

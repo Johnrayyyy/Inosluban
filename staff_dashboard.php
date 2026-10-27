@@ -3,7 +3,10 @@ require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/staff.php';
 require_staff();
 $isStaff = ($_SESSION['user']['role'] ?? '') === 'staff';
-$timeLog = $isStaff ? staff_clock_in((int) $_SESSION['user']['id']) : null;
+$timeLog = $isStaff && isset($_SESSION['staff_time_log_id'])
+    ? staff_get_time_log((int) $_SESSION['staff_time_log_id'], (int) $_SESSION['user']['id'])
+    : null;
+$dayStart = new DateTimeImmutable('today', new DateTimeZone(APP_TIMEZONE));
 $counts = [
     'documents' => (int) db()->query("SELECT COUNT(*) FROM document_request WHERE status = 'Pending'")->fetchColumn(),
     'blotter' => (int) db()->query("SELECT COUNT(*) FROM blotter WHERE status IN ('Pending', 'Under Review', 'In Progress')")->fetchColumn(),
@@ -20,7 +23,7 @@ require __DIR__ . '/includes/header.php';
     <section class="dashboard-content">
         <header class="dashboard-topbar"><div class="dashboard-search"><i class="bi bi-search"></i><input type="search" placeholder="Search requests..." aria-label="Search requests"></div><div class="dashboard-user"><i class="bi bi-bell-fill"></i><span class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e($_SESSION['user']['full_name']) ?></strong><small><?= e(ucfirst($_SESSION['user']['role'])) ?></small></span></div></header>
         <div class="staff-main">
-            <div class="staff-hero"><div><p class="eyebrow">STAFF PORTAL</p><h1>Good day, <?= e(explode(' ', trim($_SESSION['user']['full_name']))[0]) ?>!</h1><p>Review and process resident requests securely.</p></div><?php if ($isStaff && $timeLog): ?><?php $clockIn = new DateTimeImmutable((string) $timeLog['clock_in']); ?><div class="staff-timer"><small>TIME SHEET · CLOCKED IN</small><strong data-staff-timer data-clock-in="<?= e($clockIn->format('U')) ?>" data-server-now="<?= e((string) time()) ?>">00:00:00</strong><span>Session started <?= e($clockIn->setTimezone(new DateTimeZone(APP_TIMEZONE))->format('M j, Y g:i A')) ?> Philippine Time</span></div><?php endif; ?></div>
+            <div class="staff-hero"><div><p class="eyebrow">STAFF PORTAL</p><h1>Good day, <?= e(explode(' ', trim($_SESSION['user']['full_name']))[0]) ?>!</h1><p>Review and process resident requests securely.</p></div><?php if ($isStaff && $timeLog): ?><?php $clockIn = new DateTimeImmutable((string) $timeLog['clock_in']); ?><div class="staff-timer"><small>TIME SHEET · TODAY'S WORK TIME</small><strong data-staff-timer data-clock-in="<?= e($clockIn->format('U')) ?>" data-server-now="<?= e((string) time()) ?>" data-day-start="<?= e($dayStart->format('U')) ?>">00:00:00</strong><span>Session started <?= e($clockIn->setTimezone(new DateTimeZone(APP_TIMEZONE))->format('M j, Y g:i A')) ?> Philippine Time</span></div><?php endif; ?></div>
             <div class="staff-stat-grid">
                 <a class="staff-stat-card" href="staff_requests.php?type=documents"><i class="bi bi-file-earmark-text"></i><span>Document requests<strong><?= $counts['documents'] ?></strong></span></a>
                 <a class="staff-stat-card" href="staff_requests.php?type=blotter"><i class="bi bi-shield-check"></i><span>Blotter cases<strong><?= $counts['blotter'] ?></strong></span></a>

@@ -14,18 +14,65 @@ function ensure_staff_tables(): void
     );
 }
 
-function staff_clock_in(int $userId): array
+function staff_start_time_log(int $userId): array
 {
     ensure_staff_tables();
-    $active = db()->prepare('SELECT time_log_id, clock_in FROM staff_time_log WHERE user_id = :user_id AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1');
-    $active->execute(['user_id' => $userId]);
-    $row = $active->fetch();
-    if ($row) {
-        return $row;
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $closePrevious = $pdo->prepare(
+            'UPDATE staff_time_log
+             SET clock_out = CURRENT_TIMESTAMP,
+                 total_seconds = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - clock_in)))::INT)
+             WHERE user_id = :user_id AND clock_out IS NULL'
+        );
+        $closePrevious->execute(['user_id' => $userId]);
+
+        $insert = $pdo->prepare(
+            'INSERT INTO staff_time_log (user_id)
+             VALUES (:user_id)
+             RETURNING time_log_id, clock_in'
+        );
+        $insert->execute(['user_id' => $userId]);
+        $timeLog = $insert->fetch();
+        $pdo->commit();
+
+        return $timeLog;
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $exception;
     }
-    $insert = db()->prepare('INSERT INTO staff_time_log (user_id) VALUES (:user_id) RETURNING time_log_id, clock_in');
-    $insert->execute(['user_id' => $userId]);
-    return $insert->fetch();
+}
+
+function staff_get_time_log(int $timeLogId, int $userId): ?array
+{
+    ensure_staff_tables();
+    $statement = db()->prepare(
+        'SELECT time_log_id, clock_in
+         FROM staff_time_log
+         WHERE time_log_id = :time_log_id AND user_id = :user_id AND clock_out IS NULL'
+    );
+    $statement->execute(['time_log_id' => $timeLogId, 'user_id' => $userId]);
+    $timeLog = $statement->fetch();
+
+    return $timeLog ?: null;
+}
+
+function staff_clock_out(int $timeLogId, int $userId): void
+{
+    ensure_staff_tables();
+    $statement = db()->prepare(
+        'UPDATE staff_time_log
+         SET clock_out = CURRENT_TIMESTAMP,
+             total_seconds = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - clock_in)))::INT)
+         WHERE time_log_id = :time_log_id
+           AND user_id = :user_id
+           AND clock_out IS NULL'
+    );
+    $statement->execute(['time_log_id' => $timeLogId, 'user_id' => $userId]);
 }
 
 function staff_audit(string $action, string $table, int|string $recordId, array $details = []): void
