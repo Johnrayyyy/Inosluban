@@ -237,7 +237,8 @@ require __DIR__ . '/includes/header.php';
                     </div>
                 </div>
 
-                <?php require __DIR__ . '/includes/alerts.php'; ?>
+                <?php if ($errors !== []): ?><div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-circle me-2"></i><?= e(implode(' ', $errors)) ?></div><?php endif; ?>
+                <?php if (!empty($_SESSION['success'])): ?><div class="alert alert-success" role="alert"><i class="bi bi-check-circle me-2"></i><?= e((string) $_SESSION['success']) ?></div><?php unset($_SESSION['success']); endif; ?>
 
                 <form method="post" action="index.php" novalidate>
                     <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
@@ -283,7 +284,7 @@ require __DIR__ . '/includes/header.php';
             <div class="modal-body">
                 <?php if ($errors !== []): ?>
                     <div class="alert alert-danger" role="alert">
-                        <ul class="mb-0 ps-3"><?php foreach ($errors as $error): ?><li><?= e($error) ?></li><?php endforeach; ?></ul>
+                        <i class="bi bi-exclamation-circle me-2"></i><?= e(implode(' ', $errors)) ?>
                     </div>
                 <?php endif; ?>
                 <?php if ($resetTokenValid): ?>

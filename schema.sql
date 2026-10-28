@@ -177,9 +177,9 @@ CREATE TABLE document_request (
     date_completed TIMESTAMPTZ,
 
     status VARCHAR(30) NOT NULL DEFAULT 'Pending'
-        CHECK (status IN (
+        CONSTRAINT document_request_status_check CHECK (status IN (
             'Pending', 'Processing', 'Approved',
-            'Rejected', 'Completed', 'Cancelled'
+            'Rejected', 'Completed', 'Cancelled', 'Released'
         )),
 
     remarks TEXT,
@@ -193,6 +193,15 @@ CREATE TABLE document_request (
         (purpose = 'Other' AND NULLIF(BTRIM(purpose_other), '') IS NOT NULL)
         OR (purpose <> 'Other' AND purpose_other IS NULL)
     )
+);
+
+-- 5A. DOCUMENT PICKUP VERIFICATION TOKENS
+CREATE TABLE document_pickup_token (
+    token_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    request_id INT NOT NULL UNIQUE REFERENCES document_request(request_id)
+        ON DELETE CASCADE,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 6. BLOTTER / INCIDENT REPORT

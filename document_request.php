@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/document_pickup.php';
 require_once __DIR__ . '/includes/document_request_email.php';
 require_once __DIR__ . '/config/mailer.php';
 require_resident();
@@ -21,7 +22,9 @@ $defaults = [
 $draft = array_merge($defaults, $_SESSION['document_request_draft'] ?? []);
 $errors = [];
 $success = (string) ($_SESSION['document_request_success'] ?? '');
+$requestError = (string) ($_SESSION['document_request_error'] ?? '');
 unset($_SESSION['document_request_success']);
+unset($_SESSION['document_request_error']);
 $step = max(1, min(3, (int) ($_GET['step'] ?? $_POST['step'] ?? 1)));
 
 function document_request_validate(array $values, int $step, array $documentTypes, array $purposes, array $civilStatuses): array
@@ -77,6 +80,21 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         verify_csrf_token($_POST['csrf_token'] ?? '');
+        $action = (string) ($_POST['action'] ?? 'next');
+        if ($action === 'cancel_request') {
+            $requestId = filter_var($_POST['request_id'] ?? '', FILTER_VALIDATE_INT);
+            if (!$requestId || $requestId < 1) {
+                $_SESSION['document_request_error'] = 'The document request could not be found.';
+            } else {
+                if (cancel_pending_document_request($requestId, $residentId)) {
+                    $_SESSION['document_request_success'] = 'Your pending document request was cancelled.';
+                } else {
+                    $_SESSION['document_request_error'] = 'Only pending requests can be cancelled.';
+                }
+            }
+            header('Location: document_request.php');
+            exit;
+        }
         foreach (array_keys($draft) as $field) {
             if (array_key_exists($field, $_POST)) {
                 $draft[$field] = trim((string) $_POST[$field]);
@@ -85,7 +103,6 @@ try {
         if ($draft['purpose'] !== 'Other') {
             $draft['purpose_other'] = '';
         }
-        $action = (string) ($_POST['action'] ?? 'next');
         $errors = document_request_validate($draft, $step, $documentTypes, $purposes, $civilStatuses);
 
         if ($errors === []) {
@@ -164,6 +181,7 @@ require __DIR__ . '/includes/header.php';
             <div class="request-banner"><span class="request-banner-icon"><i class="bi bi-check-lg"></i></span><div><strong>Skip the queue. Request online.</strong><small>Choose a document, complete the details, and follow its status from your dashboard.</small></div></div>
             <?php if ($errors !== []): ?><div class="alert alert-danger request-alert"><ul class="mb-0"><?php foreach ($errors as $error): ?><li><?= e($error) ?></li><?php endforeach; ?></ul></div><?php endif; ?>
             <?php if ($success !== ''): ?><div class="alert alert-success request-alert"><?= e($success) ?></div><?php endif; ?>
+            <?php if ($requestError !== ''): ?><div class="alert alert-danger request-alert"><?= e($requestError) ?></div><?php endif; ?>
             <div class="request-columns">
                 <section class="request-card wizard-card">
                     <div class="card-heading"><div><h2>New document request</h2><p>Fields marked with * are required.</p></div></div>
@@ -197,7 +215,7 @@ require __DIR__ . '/includes/header.php';
                     </form>
                 </section>
                 <aside class="request-card active-requests"><div class="card-heading"><div><h2>My active requests</h2><p>Select a request to view its timeline.</p></div><span class="active-count"><?= count($requests) ?> active</span></div>
-                    <?php foreach ($requests as $request): ?><a class="active-request <?= $request === $requests[0] ? 'selected' : '' ?>" href="document_request_status.php?id=<?= (int) $request['request_id'] ?>"><span class="active-request-icon"><i class="bi bi-file-earmark-text"></i></span><span><strong><?= e($request['document_type']) ?></strong><small>REQ-<?= date('Y') ?>-<?= str_pad((string) $request['request_id'], 4, '0', STR_PAD_LEFT) ?></small><em><?= e($request['status']) ?></em><small>Last update <?= e((new DateTime($request['request_date']))->format('M d, Y')) ?></small></span><i class="bi bi-chevron-right"></i></a><?php endforeach; ?>
+                    <?php foreach ($requests as $request): ?><a class="active-request <?= $request === $requests[0] ? 'selected' : '' ?>" href="document_request_status.php?id=<?= (int) $request['request_id'] ?>"><span class="active-request-icon"><i class="bi bi-file-earmark-text"></i></span><span><strong><?= e($request['document_type']) ?></strong><small>REQ-<?= date('Y') ?>-<?= str_pad((string) $request['request_id'], 4, '0', STR_PAD_LEFT) ?></small><em><?= e($request['status']) ?></em><small>Last update <?= e((new DateTime($request['request_date']))->format('M d, Y')) ?></small></span><i class="bi bi-chevron-right"></i></a><?php if ($request['status'] === 'Pending'): ?><form class="request-cancel-form" method="post" action="document_request.php" onsubmit="return confirm('Cancel this pending document request?')"><input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>"><input type="hidden" name="action" value="cancel_request"><input type="hidden" name="request_id" value="<?= (int) $request['request_id'] ?>"><button class="btn btn-sm request-cancel-button" type="submit">Cancel request</button></form><?php endif; ?><?php endforeach; ?>
                     <?php if ($requests === []): ?><p class="empty-requests">No requests yet.</p><?php endif; ?><div class="request-help"><strong>Need another document?</strong><small>Start a new request anytime. Keep your tracking number for follow-up.</small></div>
                 </aside>
             </div>

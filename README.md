@@ -46,6 +46,12 @@ The login page's password recovery sends a one-time email link that expires
 after one hour. Configure `APP_BASE_URL` to the externally reachable application
 URL for deployed environments; the reset-token table is also included in
 `schema.sql` and is created automatically when password recovery is first used.
+Document requests can be cancelled by their resident only while Pending. When
+staff marks a document request Completed (ready for pickup), the portal emails a
+locally generated QR code. An authenticated staff member scans it, checks the
+request details against the person's valid photo ID, then confirms release.
+Document pickup tokens are single-use; the portal creates the token table and
+adds the Released status constraint automatically for existing databases.
 The registration terms are a working draft based on Philippine privacy
 requirements. Confirm the barangay's privacy contact, retention schedule, and
 service-specific data practices with its Data Protection Officer or legal

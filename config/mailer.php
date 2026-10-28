@@ -12,7 +12,8 @@ require_once __DIR__ . '/config.php';
 function sendEmail(
     string $recipient,
     string $subject,
-    string $body
+    string $body,
+    array $embeddedImages = []
 ): bool {
     if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
         error_log('Email error: recipient address is invalid.');
@@ -53,6 +54,24 @@ function sendEmail(
 
         $mail->setFrom(MAIL_FROM, MAIL_FROM_NAME);
         $mail->addAddress($recipient);
+        foreach ($embeddedImages as $image) {
+            if (
+                !isset($image['content'], $image['cid'], $image['name'], $image['mime'])
+                || !is_string($image['content'])
+                || !is_string($image['cid'])
+                || !is_string($image['name'])
+                || !is_string($image['mime'])
+            ) {
+                throw new \InvalidArgumentException('Embedded email images must include string content, cid, name, and mime values.');
+            }
+            $mail->addStringEmbeddedImage(
+                $image['content'],
+                $image['cid'],
+                $image['name'],
+                PHPMailer::ENCODING_BASE64,
+                $image['mime']
+            );
+        }
 
         $mail->isHTML(true);
         $mail->Subject = $subject;
