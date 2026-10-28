@@ -206,6 +206,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($timeLog !== null) {
                 $_SESSION['staff_time_log_id'] = (int) $timeLog['time_log_id'];
             }
+            if ($user['role'] === 'admin') {
+                $_SESSION['weather_refresh_on_login'] = true;
+            } else {
+                unset($_SESSION['weather_refresh_on_login']);
+            }
             header('Location: ' . (in_array($user['role'], ['staff', 'admin'], true) ? 'staff_dashboard.php' : 'dashboard.php'));
             exit;
         }

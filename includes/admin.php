@@ -97,6 +97,46 @@ function latest_weather_snapshot(): ?array
     ];
 }
 
+function refresh_weather_snapshot_if_due(int $cooldownMinutes = 10): array
+{
+    $cooldownMinutes = max(1, min(60, $cooldownMinutes));
+    ensure_admin_schema();
+    $lock = db()->query("SELECT CASE WHEN pg_try_advisory_lock(hashtext('inosluban-hourly-weather')) THEN 1 ELSE 0 END")->fetchColumn();
+    if ((int) $lock !== 1) {
+        return ['status' => 'already_running'];
+    }
+
+    try {
+        $stale = db()->query(
+            "SELECT CASE
+                WHEN attempted_at < CURRENT_TIMESTAMP - INTERVAL '{$cooldownMinutes} minutes'
+                THEN 1
+                ELSE 0
+             END
+             FROM weather_snapshot
+             WHERE snapshot_id = 1"
+        )->fetchColumn();
+        if ($stale !== false && (int) $stale !== 1) {
+            return ['status' => 'recent'];
+        }
+
+        try {
+            $weather = fetch_weather_advisory();
+            store_weather_snapshot($weather);
+            return [
+                'status' => 'updated',
+                'source' => $weather['source_name'],
+                'fetched_at' => $weather['current']['time'],
+            ];
+        } catch (Throwable $exception) {
+            record_weather_sync_failure($exception->getMessage());
+            throw $exception;
+        }
+    } finally {
+        db()->query("SELECT pg_advisory_unlock(hashtext('inosluban-hourly-weather'))");
+    }
+}
+
 function admin_upload_image(string $field): ?string
 {
     if (empty($_FILES[$field]['name'])) {

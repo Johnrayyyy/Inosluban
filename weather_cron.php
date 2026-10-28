@@ -11,8 +11,8 @@ require_once __DIR__ . '/includes/admin.php';
 
 try {
     ensure_admin_schema();
-    $lock = db()->query("SELECT pg_try_advisory_lock(hashtext('inosluban-hourly-weather'))")->fetchColumn();
-    if (!$lock) {
+    $lock = db()->query("SELECT CASE WHEN pg_try_advisory_lock(hashtext('inosluban-hourly-weather')) THEN 1 ELSE 0 END")->fetchColumn();
+    if ((int) $lock !== 1) {
         fwrite(STDOUT, "Weather refresh already running; skipping this invocation.\n");
         exit(0);
     }

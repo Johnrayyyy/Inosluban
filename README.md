@@ -62,7 +62,10 @@ forecast, and hourly data, with MET Norway as a no-key fallback if Open-Meteo
 is unavailable or rate-limited. Docker deployments install PHP cURL for these
 connections. The admin weather dashboard reads its latest complete
 current/hourly/daily payload from the `weather_snapshot` table; refresh runs
-independently of resident or admin sign-in.
+independently of resident or admin sign-in. A successful admin login also
+triggers a background refresh from the admin dashboard, with a ten-minute
+cooldown and a PostgreSQL advisory lock to prevent overlapping requests or
+repeated logins from exhausting provider limits.
 
 To enable the hourly schedule on Render, create a **Cron Job** for this same
 repository and deployment branch. Use the same Dockerfile and region as the web

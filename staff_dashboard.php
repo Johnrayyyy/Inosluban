@@ -2,6 +2,9 @@
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/staff.php';
 require_staff();
+$refreshWeatherOnLogin = ($_SESSION['user']['role'] ?? '') === 'admin'
+    && !empty($_SESSION['weather_refresh_on_login']);
+unset($_SESSION['weather_refresh_on_login']);
 $isStaff = ($_SESSION['user']['role'] ?? '') === 'staff';
 $timeLog = $isStaff && isset($_SESSION['staff_time_log_id'])
     ? staff_get_time_log((int) $_SESSION['staff_time_log_id'], (int) $_SESSION['user']['id'])
@@ -15,7 +18,7 @@ $counts = [
 $pageTitle = 'Staff dashboard';
 require __DIR__ . '/includes/header.php';
 ?>
-<main class="dashboard-page staff-page">
+<main class="dashboard-page staff-page"<?= $refreshWeatherOnLogin ? ' data-weather-refresh-on-login data-csrf-token="' . e(csrf_token()) . '"' : '' ?>>
     <aside class="dashboard-sidebar">
         <a class="dashboard-brand" href="staff_dashboard.php"><img src="assets/images/logo.png" alt="Barangay Inosluban logo"><span><strong>BARANGAY INOSLUBAN</strong><small>LIPA CITY, BATANGAS</small><small>Staff Portal</small></span></a>
         <?php require __DIR__ . '/includes/staff_nav.php'; ?>

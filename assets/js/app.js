@@ -12,6 +12,24 @@ document.querySelectorAll('[data-password-toggle]').forEach((button) => {
 
 const requestModule = document.querySelector('.request-module');
 const themeToggle = document.querySelector('[data-theme-toggle]');
+const weatherRefreshOnLogin = document.querySelector('[data-weather-refresh-on-login]');
+if (weatherRefreshOnLogin) {
+    const formData = new FormData();
+    formData.set('csrf_token', weatherRefreshOnLogin.dataset.csrfToken || '');
+    fetch('weather_refresh.php', {
+        method: 'POST',
+        body: formData,
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+    }).then((response) => {
+        if (!response.ok) {
+            throw new Error(`Weather refresh returned HTTP ${response.status}`);
+        }
+        return response.json();
+    }).catch((error) => {
+        console.warn('Automatic weather refresh after admin login failed:', error);
+    });
+}
 if (document.body) {
     const savedTheme = window.localStorage.getItem('request-theme');
     if (savedTheme === 'dark' && requestModule) {
