@@ -882,6 +882,7 @@ a:hover { color: var(--red-dark); text-decoration: underline; }
 .resident-history-card { order: 3; }
 .appointment-upcoming-card { min-height: 300px; }
 .appointment-module .appointment-quick-card, .appointment-module .appointment-help-card { background: linear-gradient(145deg, rgba(105, 11, 27, .9), rgba(48, 9, 25, .88)); }
+.appointment-module[data-theme="dark"] .today-schedule-card { background: var(--request-card); }
 .appointment-module .today-schedule-card .card-heading h2,
 .appointment-module .today-schedule-card .card-heading p,
 .appointment-module .today-schedule-card .appointment-calendar-toolbar h3,
