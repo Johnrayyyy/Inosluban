@@ -110,7 +110,7 @@ function fetch_weather_advisory(): array
         'timezone' => WEATHER_TIMEZONE,
         'forecast_days' => 7,
     ], '', '&', PHP_QUERY_RFC3986);
-    $url = 'https://api.open-meteo.com/v1/forecast?' . $query;
+    $url = 'https://api.open-meteo.com/v1/forecast?latitude=13.9411&longitude=121.1631&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,daylight_duration,sunshine_duration,rain_sum,precipitation_sum,precipitation_hours,wind_speed_10m_max,wind_gusts_10m_max&hourly=temperature_2m,dew_point_2m,relative_humidity_2m,rain,precipitation,weather_code,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,wind_speed_10m,wind_direction_10m,et0_fao_evapotranspiration,vapour_pressure_deficit&models=jma_seamless&current=temperature_2m,relative_humidity_2m,is_day,precipitation,rain,showers,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m&timezone=Asia%2FSingapore&forecast_days=7' . $query;
     if (!function_exists('curl_init')) {
         throw new RuntimeException('Weather fetching requires the PHP cURL extension. Enable or install PHP cURL, then restart the web service.');
     }
