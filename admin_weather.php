@@ -12,9 +12,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         verify_csrf_token($_POST['csrf_token'] ?? '');
         if (($_POST['action'] ?? '') === 'fetch') {
             $weather = fetch_weather_advisory();
-            $insert = db()->prepare('INSERT INTO weather_advisory (created_by_user_id, location, weather_summary, temperature, severity, recommendation, source_url) VALUES (:user_id, :location, :summary, :temperature, :severity, :recommendation, :source_url) RETURNING advisory_id');
-            $insert->execute(['user_id' => $_SESSION['user']['id'], 'location' => $weather['location'], 'summary' => $weather['summary'], 'temperature' => $weather['temperature'], 'severity' => $weather['severity'], 'recommendation' => $weather['recommendation'], 'source_url' => $weather['source_url']]);
-            staff_audit('WEATHER_ADVISORY_FETCHED', 'weather_advisory', (int) $insert->fetchColumn(), $weather);
+            $weatherData = json_encode(
+                ['current' => $weather['current'], 'hourly' => $weather['hourly'], 'forecast' => $weather['forecast']],
+                JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE
+            );
+            $insert = db()->prepare('INSERT INTO weather_advisory (created_by_user_id, location, weather_summary, temperature, severity, recommendation, source_url, weather_data) VALUES (:user_id, :location, :summary, :temperature, :severity, :recommendation, :source_url, CAST(:weather_data AS JSONB)) RETURNING advisory_id');
+            $insert->execute(['user_id' => $_SESSION['user']['id'], 'location' => $weather['location'], 'summary' => $weather['summary'], 'temperature' => $weather['temperature'], 'severity' => $weather['severity'], 'recommendation' => $weather['recommendation'], 'source_url' => $weather['source_url'], 'weather_data' => $weatherData]);
+            staff_audit('WEATHER_ADVISORY_FETCHED', 'weather_advisory', (int) $insert->fetchColumn(), [
+                'location' => $weather['location'],
+                'summary' => $weather['summary'],
+                'severity' => $weather['severity'],
+                'hourly_records' => count($weather['hourly']),
+                'forecast_days' => count($weather['forecast']),
+            ]);
             $_SESSION['weather_snapshot'] = [
                 'location' => $weather['location'],
                 'summary' => $weather['summary'],
@@ -23,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'recommendation' => $weather['recommendation'],
                 'source_url' => $weather['source_url'],
                 'current' => $weather['current'],
+                'hourly' => $weather['hourly'],
                 'forecast' => $weather['forecast'],
             ];
             $message = 'Weather advisory fetched for review. It was not published automatically.';

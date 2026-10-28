@@ -28,6 +28,7 @@ function ensure_admin_schema(): void
                 CHECK (status IN ('Pending', 'Approved', 'Dismissed'))
         )"
     );
+    db()->exec('ALTER TABLE weather_advisory ADD COLUMN IF NOT EXISTS weather_data JSONB');
 }
 
 function admin_upload_image(string $field): ?string
@@ -110,15 +111,22 @@ function fetch_weather_advisory(): array
         'forecast_days' => 7,
     ], '', '&', PHP_QUERY_RFC3986);
     $url = 'https://api.open-meteo.com/v1/forecast?' . $query;
+    if (!function_exists('curl_init')) {
+        throw new RuntimeException('Weather fetching requires the PHP cURL extension. Enable or install PHP cURL, then restart the web service.');
+    }
+
     $curl = curl_init($url);
     curl_setopt_array($curl, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 15,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_TIMEOUT => 20,
         CURLOPT_USERAGENT => APP_NAME . ' weather advisory',
     ]);
     $raw = curl_exec($curl);
     if ($raw === false) {
-        throw new RuntimeException('Weather service could not be reached.');
+        $error = curl_error($curl);
+        curl_close($curl);
+        throw new RuntimeException('Weather service could not be reached: ' . $error);
     }
     $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     curl_close($curl);
@@ -131,6 +139,10 @@ function fetch_weather_advisory(): array
     $daily = $data['daily'] ?? null;
     if (!is_array($current) || !is_array($daily) || empty($daily['time'])) {
         throw new RuntimeException('Weather service returned incomplete data.');
+    }
+    $hourlyData = $data['hourly'] ?? null;
+    if (!is_array($hourlyData) || empty($hourlyData['time'])) {
+        throw new RuntimeException('Weather service returned no hourly forecast data.');
     }
 
     $currentCode = (int) ($current['weather_code'] ?? 0);
@@ -162,6 +174,25 @@ function fetch_weather_advisory(): array
         ];
     }
 
+    $hourly = [];
+    foreach ($hourlyData['time'] as $index => $time) {
+        $hourlyCode = (int) ($hourlyData['weather_code'][$index] ?? 0);
+        $hourly[] = [
+            'time' => (string) $time,
+            'temperature' => (float) ($hourlyData['temperature_2m'][$index] ?? 0),
+            'rain' => (float) ($hourlyData['rain'][$index] ?? 0),
+            'precipitation' => (float) ($hourlyData['precipitation'][$index] ?? 0),
+            'weather_code' => $hourlyCode,
+            'summary' => weather_code_label($hourlyCode),
+            'cloud_cover' => (int) ($hourlyData['cloud_cover'][$index] ?? 0),
+            'cloud_cover_low' => (int) ($hourlyData['cloud_cover_low'][$index] ?? 0),
+            'cloud_cover_mid' => (int) ($hourlyData['cloud_cover_mid'][$index] ?? 0),
+            'cloud_cover_high' => (int) ($hourlyData['cloud_cover_high'][$index] ?? 0),
+            'wind_speed' => (float) ($hourlyData['wind_speed_10m'][$index] ?? 0),
+            'wind_direction' => (int) ($hourlyData['wind_direction_10m'][$index] ?? 0),
+        ];
+    }
+
     $recommendation = match ($severity) {
         'Warning' => 'Thunderstorms are forecast. Prepare a weather advisory and monitor PAGASA updates.',
         'Watch' => 'Rain is forecast. Review conditions before publishing a weather-related advisory.',
@@ -186,6 +217,7 @@ function fetch_weather_advisory(): array
             'wind_speed' => (float) ($current['wind_speed_10m'] ?? 0),
             'wind_direction' => (int) ($current['wind_direction_10m'] ?? 0),
         ],
+        'hourly' => $hourly,
         'forecast' => $forecast,
     ];
 }

@@ -9,7 +9,9 @@ A beginner-friendly PHP starter project for a secure login and registration flow
 3. Open [http://localhost/PHP_project/](http://localhost/PHP_project/) in your browser.
 4. Configure the PostgreSQL connection in `.env`, then choose **Create an account** to test registration.
 
-The project uses the PHP version included with XAMPP. Make sure the `pdo_pgsql` extension is enabled in `php.ini`.
+The project uses the PHP version included with XAMPP. Make sure the `pdo_pgsql`
+and `curl` extensions are enabled in `php.ini`. Docker deployments install both
+extensions in the image.
 
 Document request confirmations and profile verification emails use PHPMailer
 over SMTP. Docker deployments install Composer dependencies as part of the
@@ -55,6 +57,10 @@ deployed staff verification route. An authenticated staff member scans it,
 checks the request details against the person's valid photo ID, then confirms release.
 Document pickup tokens are single-use; the portal creates the token table and
 adds the Released status constraint automatically for existing databases.
+The admin weather page fetches Open-Meteo current conditions, a seven-day
+forecast, and hourly data. Docker deployments install PHP cURL for this
+connection, and each fetch stores the complete current/hourly/daily payload in
+the `weather_advisory.weather_data` JSONB column for use by the system.
 The registration terms are a working draft based on Philippine privacy
 requirements. Confirm the barangay's privacy contact, retention schedule, and
 service-specific data practices with its Data Protection Officer or legal
