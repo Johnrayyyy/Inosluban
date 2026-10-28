@@ -43,13 +43,16 @@ because Render blocks outbound SMTP on port `587`. Other SMTP providers keep
 using their configured port.
 
 The login page's password recovery sends a one-time email link that expires
-after one hour. Configure `APP_BASE_URL` to the externally reachable application
-URL for deployed environments; the reset-token table is also included in
+after one hour. The default application URL is
+`https://inosluban.onrender.com`; set `APP_BASE_URL` to the deployed origin (or
+its `index.php` URL) when deploying elsewhere. Email links to application routes
+are built from that origin. The reset-token table is also included in
 `schema.sql` and is created automatically when password recovery is first used.
 Document requests can be cancelled by their resident only while Pending. When
 staff marks a document request Completed (ready for pickup), the portal emails a
-locally generated QR code. An authenticated staff member scans it, checks the
-request details against the person's valid photo ID, then confirms release.
+locally generated QR code in the branded email template. The QR opens the
+deployed staff verification route. An authenticated staff member scans it,
+checks the request details against the person's valid photo ID, then confirms release.
 Document pickup tokens are single-use; the portal creates the token table and
 adds the Released status constraint automatically for existing databases.
 The registration terms are a working draft based on Philippine privacy

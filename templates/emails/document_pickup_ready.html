@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Document ready for pickup</title>
+</head>
+<body style="margin:0;background:#f8f5f3;color:#211a1c;font-family:Arial,sans-serif">
+<div style="max-width:620px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 28px rgba(52,27,20,.12)">
+    <div style="padding:28px;background:#8e0710;color:#fff;text-align:center">
+        <div style="font-size:20px;font-weight:700">BARANGAY INOSLUBAN</div>
+        <div style="margin-top:5px;color:#f4d789;font-size:12px;letter-spacing:2px">LIPA CITY, BATANGAS</div>
+    </div>
+    <div style="padding:30px">
+        <h1 style="margin:0 0 12px;color:#8e0710;font-size:24px">Document ready for pickup</h1>
+        <p>Hi {{resident_name}},</p>
+        <p>Your <strong>{{document_type}}</strong> is ready for pickup at Barangay Inosluban.</p>
+        <div style="margin:24px 0;padding:18px;background:#f8f5f3;border-left:4px solid #e9ad25">
+            <p style="margin:0 0 8px"><strong>Request number:</strong> {{request_number}}</p>
+            <p style="margin:0"><strong>Next step:</strong> Present this QR code to barangay staff when you arrive.</p>
+        </div>
+        <div style="margin:24px auto;text-align:center">{{pickup_qr}}</div>
+        <p style="text-align:center;margin:28px 0"><a href="{{portal_url}}" style="display:inline-block;padding:13px 22px;background:#8e0710;color:#fff;text-decoration:none;border-radius:7px;font-weight:700">Open Barangay Inosluban portal</a></p>
+        <p style="font-size:13px;color:#655b5d">Staff will scan the QR code and verify that the name on your valid photo ID matches the request before releasing your document. If the QR image is not visible, staff can use this verification link: <a href="{{verification_url}}" style="color:#8e0710">{{verification_url}}</a>.</p>
+    </div>
+    <div style="padding:18px;text-align:center;background:#211a1c;color:#fff;font-size:12px">Connect. Collaborate. Grow Together.</div>
+</div>
+</body>
+</html>

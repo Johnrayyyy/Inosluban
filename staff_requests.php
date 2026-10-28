@@ -15,6 +15,7 @@ if ($config === null) {
 }
 if ($type === 'documents') {
     require_once __DIR__ . '/includes/document_pickup.php';
+    require_once __DIR__ . '/includes/document_pickup_email.php';
     require_once __DIR__ . '/config/mailer.php';
     ensure_document_pickup_schema();
 }
@@ -58,20 +59,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $pickup = create_document_pickup_token((int) $recordId);
                         $emailAddress = trim((string) ($pickupDetails['email'] ?? ''));
                         if ($emailAddress !== '' && filter_var($emailAddress, FILTER_VALIDATE_EMAIL)) {
-                            $qrHtml = '<p style="text-align:center"><img src="cid:document-pickup-qr" alt="Document pickup verification QR code" width="300" height="300"></p>';
-                            $safeName = e((string) $pickupDetails['name']);
-                            $safeType = e((string) $pickupDetails['document_type']);
-                            $safeUrl = e($pickup['url']);
-                            $emailBody = '<p>Hello ' . $safeName . ',</p>'
-                                . '<p>Your ' . $safeType . ' is ready for pickup at Barangay Inosluban.</p>'
-                                . '<p>Show this QR code to barangay staff when you arrive. Staff will verify that the name on your valid photo ID matches the request before releasing the document.</p>'
-                                . $qrHtml
-                                . '<p>If the QR image is not visible, use this verification link at the barangay office: <a href="' . $safeUrl . '">' . $safeUrl . '</a>.</p>'
-                                . '<p>Request number: REQ-' . date('Y') . '-' . str_pad((string) $recordId, 4, '0', STR_PAD_LEFT) . '</p>';
                             $emailSent = sendEmail(
                                 $emailAddress,
                                 'Your document is ready for pickup',
-                                $emailBody,
+                                document_pickup_ready_email_html(
+                                    [
+                                        'request_id' => $recordId,
+                                        'document_type' => $pickupDetails['document_type'],
+                                        'name' => $pickupDetails['name'],
+                                    ],
+                                    $pickup['url']
+                                ),
                                 [[
                                     'content' => $pickup['png'],
                                     'cid' => 'document-pickup-qr',

@@ -56,7 +56,11 @@ define('DB_NAME', getenv('DB_NAME') ?: rawurldecode(ltrim($databaseUrlParts['pat
 define('DB_USER', getenv('DB_USER') ?: rawurldecode($databaseUrlParts['user'] ?? ''));
 define('DB_PASSWORD', getenv('DB_PASSWORD') ?: rawurldecode($databaseUrlParts['pass'] ?? ''));
 
-define('APP_BASE_URL', getenv('APP_BASE_URL') ?: 'http://localhost/PHP_project');
+$appBaseUrl = rtrim(getenv('APP_BASE_URL') ?: 'https://inosluban.onrender.com', '/');
+if (str_ends_with($appBaseUrl, '/index.php')) {
+    $appBaseUrl = substr($appBaseUrl, 0, -strlen('/index.php'));
+}
+define('APP_BASE_URL', $appBaseUrl);
 
 define('SMTP_HOST', getenv('SMTP_HOST') ?: 'smtp.gmail.com');
 define('SMTP_PORT', (int) (getenv('SMTP_PORT') ?: 587));
