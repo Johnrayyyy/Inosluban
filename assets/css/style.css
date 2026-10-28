@@ -882,6 +882,29 @@ a:hover { color: var(--red-dark); text-decoration: underline; }
 .resident-history-card { order: 3; }
 .appointment-upcoming-card { min-height: 300px; }
 .appointment-module .appointment-quick-card, .appointment-module .appointment-help-card { background: linear-gradient(145deg, rgba(105, 11, 27, .9), rgba(48, 9, 25, .88)); }
+.appointment-module .today-schedule-card .card-heading h2,
+.appointment-module .today-schedule-card .card-heading p,
+.appointment-module .today-schedule-card .appointment-calendar-toolbar h3,
+.appointment-module .today-schedule-card .calendar-weekday,
+.appointment-module .today-schedule-card .calendar-day-schedule h3 { color: #24252b !important; }
+.appointment-module .today-schedule-card .calendar-day-schedule h3 span,
+.appointment-module .today-schedule-card .calendar-day-schedule .empty-requests { color: #5f626b !important; }
+.appointment-module .today-schedule-card .calendar-nav { color: #24252b !important; }
+.appointment-module .today-schedule-card .calendar-today-link { color: #8e0710 !important; }
+.appointment-module .today-schedule-card .calendar-day-number { color: #24252b !important; }
+.appointment-module .today-schedule-card .calendar-day.outside-month .calendar-day-number { color: #5f626b !important; }
+.appointment-module .today-schedule-card .calendar-day.selected .calendar-day-number { color: #6f0716 !important; }
+.appointment-module[data-theme="dark"] .today-schedule-card .card-heading h2,
+.appointment-module[data-theme="dark"] .today-schedule-card .card-heading p,
+.appointment-module[data-theme="dark"] .today-schedule-card .appointment-calendar-toolbar h3,
+.appointment-module[data-theme="dark"] .today-schedule-card .calendar-day-schedule h3,
+.appointment-module[data-theme="dark"] .today-schedule-card .calendar-day-number,
+.appointment-module[data-theme="dark"] .today-schedule-card .calendar-nav { color: #f7f7f8 !important; }
+.appointment-module[data-theme="dark"] .today-schedule-card .calendar-weekday,
+.appointment-module[data-theme="dark"] .today-schedule-card .calendar-day-schedule h3 span,
+.appointment-module[data-theme="dark"] .today-schedule-card .calendar-day-schedule .empty-requests,
+.appointment-module[data-theme="dark"] .today-schedule-card .calendar-day.outside-month .calendar-day-number { color: #adb0ba !important; }
+.appointment-module[data-theme="dark"] .today-schedule-card .calendar-day.selected .calendar-day-number { color: #fff !important; }
 .appointment-module[data-theme="dark"] .calendar-day:hover,
 .appointment-module[data-theme="dark"] .calendar-day.selected { background: rgba(178, 11, 53, .28); }
 .appointment-module[data-theme="dark"] .calendar-today-link { color: #ffc2ce; }
