@@ -303,3 +303,22 @@ if (window.bootstrap && window.bootstrap.Modal) {
         window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
     });
 }
+
+const appointmentDetailsModal = document.querySelector('#appointmentDetailsModal');
+if (appointmentDetailsModal) {
+    appointmentDetailsModal.addEventListener('show.bs.modal', (event) => {
+        const trigger = event.relatedTarget;
+        if (!trigger) {
+            return;
+        }
+        ['service', 'date', 'staff', 'notes', 'status'].forEach((field) => {
+            const value = trigger.dataset[field] || (field === 'staff' ? 'Not assigned' : '');
+            appointmentDetailsModal.querySelector(`[data-appointment-detail="${field}"]`).textContent = value;
+        });
+        const cancelForm = appointmentDetailsModal.querySelector('.appointment-cancel-form');
+        const cancelId = cancelForm.querySelector('input[name="appointment_id"]');
+        const pending = trigger.dataset.status === 'Pending';
+        cancelForm.hidden = !pending;
+        cancelId.value = pending ? trigger.dataset.appointmentId : '';
+    });
+}
