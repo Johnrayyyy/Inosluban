@@ -98,19 +98,8 @@ function weather_wind_direction(int $degrees): string
     return $directions[(int) round((($degrees % 360) + 360) % 360 / 22.5) % 16];
 }
 
-function fetch_weather_advisory(): array
+function weather_request_json(string $url, string $userAgent): array
 {
-    $query = http_build_query([
-        'latitude' => WEATHER_LATITUDE,
-        'longitude' => WEATHER_LONGITUDE,
-        'daily' => 'weather_code,temperature_2m_min,temperature_2m_max,sunrise,sunset,daylight_duration,sunshine_duration,rain_sum,precipitation_sum',
-        'hourly' => 'temperature_2m,rain,precipitation,weather_code,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,wind_speed_10m,wind_direction_10m',
-        'models' => 'jma_seamless',
-        'current' => 'temperature_2m,rain,precipitation,showers,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m',
-        'timezone' => WEATHER_TIMEZONE,
-        'forecast_days' => 7,
-    ], '', '&', PHP_QUERY_RFC3986);
-    $url = 'https://api.open-meteo.com/v1/forecast?latitude=13.9411&longitude=121.1631&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,daylight_duration,sunshine_duration,rain_sum,precipitation_sum,precipitation_hours,wind_speed_10m_max,wind_gusts_10m_max&hourly=temperature_2m,dew_point_2m,relative_humidity_2m,rain,precipitation,weather_code,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,wind_speed_10m,wind_direction_10m,et0_fao_evapotranspiration,vapour_pressure_deficit&models=jma_seamless&current=temperature_2m,relative_humidity_2m,is_day,precipitation,rain,showers,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m&timezone=Asia%2FSingapore&forecast_days=7' . $query;
     if (!function_exists('curl_init')) {
         throw new RuntimeException('Weather fetching requires the PHP cURL extension. Enable or install PHP cURL, then restart the web service.');
     }
@@ -120,7 +109,7 @@ function fetch_weather_advisory(): array
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_TIMEOUT => 20,
-        CURLOPT_USERAGENT => APP_NAME . ' weather advisory',
+        CURLOPT_USERAGENT => $userAgent,
     ]);
     $raw = curl_exec($curl);
     if ($raw === false) {
@@ -128,28 +117,42 @@ function fetch_weather_advisory(): array
         curl_close($curl);
         throw new RuntimeException('Weather service could not be reached: ' . $error);
     }
+
     $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     curl_close($curl);
     $data = json_decode($raw, true);
     if ($status < 200 || $status >= 300 || !is_array($data)) {
-        throw new RuntimeException((string) ($data['reason'] ?? 'Weather service returned an error.'));
+        $reason = is_array($data) ? (string) ($data['reason'] ?? $data['message'] ?? '') : '';
+        throw new RuntimeException($reason !== '' ? $reason : 'Weather service returned HTTP ' . $status . '.');
     }
 
+    return $data;
+}
+
+function fetch_open_meteo_advisory(): array
+{
+    $query = http_build_query([
+        'latitude' => WEATHER_LATITUDE,
+        'longitude' => WEATHER_LONGITUDE,
+        'daily' => 'weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,daylight_duration,sunshine_duration,rain_sum,precipitation_sum,precipitation_hours,wind_speed_10m_max,wind_gusts_10m_max',
+        'hourly' => 'temperature_2m,dew_point_2m,relative_humidity_2m,rain,precipitation,weather_code,cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,wind_speed_10m,wind_direction_10m,et0_fao_evapotranspiration,vapour_pressure_deficit',
+        'models' => 'jma_seamless',
+        'current' => 'temperature_2m,relative_humidity_2m,is_day,precipitation,rain,showers,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m',
+        'timezone' => WEATHER_TIMEZONE,
+        'forecast_days' => 7,
+    ], '', '&', PHP_QUERY_RFC3986);
+    $url = 'https://api.open-meteo.com/v1/forecast?' . $query;
+    $data = weather_request_json($url, APP_NAME . ' weather advisory');
     $current = $data['current'] ?? null;
     $daily = $data['daily'] ?? null;
-    if (!is_array($current) || !is_array($daily) || empty($daily['time'])) {
-        throw new RuntimeException('Weather service returned incomplete data.');
-    }
     $hourlyData = $data['hourly'] ?? null;
-    if (!is_array($hourlyData) || empty($hourlyData['time'])) {
-        throw new RuntimeException('Weather service returned no hourly forecast data.');
+    if (!is_array($current) || !is_array($daily) || empty($daily['time']) || !is_array($hourlyData) || empty($hourlyData['time'])) {
+        throw new RuntimeException('Open-Meteo returned incomplete current, hourly, or daily data.');
     }
 
     $currentCode = (int) ($current['weather_code'] ?? 0);
-    $summary = weather_code_label($currentCode);
     $temperature = (float) ($current['temperature_2m'] ?? 0);
     $severity = weather_severity_for($currentCode);
-
     $forecast = [];
     foreach ($daily['time'] as $index => $date) {
         $dayCode = (int) ($daily['weather_code'][$index] ?? 0);
@@ -171,6 +174,9 @@ function fetch_weather_advisory(): array
             'sunshine_hours' => $sunshineSeconds === null ? null : round((float) $sunshineSeconds / 3600, 1),
             'rain_sum' => (float) ($daily['rain_sum'][$index] ?? 0),
             'precipitation_sum' => (float) ($daily['precipitation_sum'][$index] ?? 0),
+            'precipitation_hours' => (float) ($daily['precipitation_hours'][$index] ?? 0),
+            'wind_speed_max' => (float) ($daily['wind_speed_10m_max'][$index] ?? 0),
+            'wind_gusts_max' => (float) ($daily['wind_gusts_10m_max'][$index] ?? 0),
         ];
     }
 
@@ -180,6 +186,8 @@ function fetch_weather_advisory(): array
         $hourly[] = [
             'time' => (string) $time,
             'temperature' => (float) ($hourlyData['temperature_2m'][$index] ?? 0),
+            'dew_point' => (float) ($hourlyData['dew_point_2m'][$index] ?? 0),
+            'relative_humidity' => (int) ($hourlyData['relative_humidity_2m'][$index] ?? 0),
             'rain' => (float) ($hourlyData['rain'][$index] ?? 0),
             'precipitation' => (float) ($hourlyData['precipitation'][$index] ?? 0),
             'weather_code' => $hourlyCode,
@@ -190,34 +198,210 @@ function fetch_weather_advisory(): array
             'cloud_cover_high' => (int) ($hourlyData['cloud_cover_high'][$index] ?? 0),
             'wind_speed' => (float) ($hourlyData['wind_speed_10m'][$index] ?? 0),
             'wind_direction' => (int) ($hourlyData['wind_direction_10m'][$index] ?? 0),
+            'evapotranspiration' => (float) ($hourlyData['et0_fao_evapotranspiration'][$index] ?? 0),
+            'vapour_pressure_deficit' => (float) ($hourlyData['vapour_pressure_deficit'][$index] ?? 0),
         ];
     }
 
-    $recommendation = match ($severity) {
+    $currentResult = [
+        'time' => (string) ($current['time'] ?? ''),
+        'temperature' => $temperature,
+        'relative_humidity' => (int) ($current['relative_humidity_2m'] ?? 0),
+        'is_day' => (int) ($current['is_day'] ?? 0),
+        'rain' => (float) ($current['rain'] ?? 0),
+        'precipitation' => (float) ($current['precipitation'] ?? 0),
+        'showers' => (float) ($current['showers'] ?? 0),
+        'weather_code' => $currentCode,
+        'cloud_cover' => (int) ($current['cloud_cover'] ?? 0),
+        'wind_speed' => (float) ($current['wind_speed_10m'] ?? 0),
+        'wind_direction' => (int) ($current['wind_direction_10m'] ?? 0),
+    ];
+
+    return [
+        'location' => WEATHER_LOCATION,
+        'summary' => weather_code_label($currentCode),
+        'temperature' => $temperature,
+        'severity' => $severity,
+        'recommendation' => weather_recommendation($severity),
+        'source_name' => 'Open-Meteo',
+        'source_url' => $url,
+        'current' => $currentResult,
+        'hourly' => $hourly,
+        'forecast' => $forecast,
+    ];
+}
+
+function weather_code_from_symbol(string $symbol): int
+{
+    $symbol = strtolower(preg_replace('/_(day|night|polartwilight)$/', '', $symbol) ?? $symbol);
+
+    return match (true) {
+        str_contains($symbol, 'thunder') => 95,
+        str_starts_with($symbol, 'clearsky') => 0,
+        str_starts_with($symbol, 'fair') => 1,
+        str_starts_with($symbol, 'partlycloudy') => 2,
+        str_starts_with($symbol, 'cloudy') => 3,
+        str_starts_with($symbol, 'fog') => 45,
+        str_starts_with($symbol, 'rainshowers') => 80,
+        str_starts_with($symbol, 'lightrainshowers') => 80,
+        str_starts_with($symbol, 'lightrain') => 51,
+        str_starts_with($symbol, 'heavyrain') => 65,
+        str_starts_with($symbol, 'rain') => 61,
+        str_starts_with($symbol, 'sleet') => 66,
+        str_starts_with($symbol, 'snowshowers') => 85,
+        str_starts_with($symbol, 'snow') => 71,
+        str_starts_with($symbol, 'thunder') => 95,
+        default => 3,
+    };
+}
+
+function fetch_met_no_advisory(): array
+{
+    $url = 'https://api.met.no/weatherapi/locationforecast/2.0/compact?' . http_build_query([
+        'lat' => WEATHER_LATITUDE,
+        'lon' => WEATHER_LONGITUDE,
+    ], '', '&', PHP_QUERY_RFC3986);
+    $data = weather_request_json($url, APP_NAME . ' weather advisory (' . APP_BASE_URL . ')');
+    $timeseries = $data['properties']['timeseries'] ?? null;
+    if (!is_array($timeseries) || $timeseries === []) {
+        throw new RuntimeException('MET Norway returned no hourly forecast data.');
+    }
+
+    $timezone = new DateTimeZone(WEATHER_TIMEZONE);
+    $now = new DateTimeImmutable('now', $timezone);
+    $hourly = [];
+    $dailyGroups = [];
+    $currentIndex = 0;
+    $smallestTimeDifference = PHP_INT_MAX;
+    foreach ($timeseries as $index => $entry) {
+        $timestamp = (new DateTimeImmutable((string) $entry['time']))->setTimezone($timezone);
+        $details = $entry['data']['instant']['details'] ?? [];
+        $oneHour = $entry['data']['next_1_hours'] ?? [];
+        $symbol = (string) ($oneHour['summary']['symbol_code'] ?? $entry['data']['next_6_hours']['summary']['symbol_code'] ?? 'cloudy');
+        $code = weather_code_from_symbol($symbol);
+        $temperature = (float) ($details['air_temperature'] ?? 0);
+        $precipitation = (float) (
+            $oneHour['details']['precipitation_amount']
+            ?? $entry['data']['next_6_hours']['details']['precipitation_amount']
+            ?? 0
+        );
+        $windSpeed = (float) ($details['wind_speed'] ?? 0) * 3.6;
+        $hourly[] = [
+            'time' => $timestamp->format('Y-m-d\TH:i'),
+            'temperature' => $temperature,
+            'dew_point' => null,
+            'relative_humidity' => isset($details['relative_humidity']) ? (int) round((float) $details['relative_humidity']) : null,
+            'rain' => $precipitation,
+            'precipitation' => $precipitation,
+            'weather_code' => $code,
+            'summary' => weather_code_label($code),
+            'cloud_cover' => (int) round((float) ($details['cloud_area_fraction'] ?? 0)),
+            'cloud_cover_low' => null,
+            'cloud_cover_mid' => null,
+            'cloud_cover_high' => null,
+            'wind_speed' => round($windSpeed, 1),
+            'wind_direction' => (int) round((float) ($details['wind_from_direction'] ?? 0)),
+            'evapotranspiration' => null,
+            'vapour_pressure_deficit' => null,
+        ];
+
+        $dateKey = $timestamp->format('Y-m-d');
+        if (!isset($dailyGroups[$dateKey])) {
+            $dailyGroups[$dateKey] = [
+                'date' => $dateKey,
+                'weather_code' => $code,
+                'temperature_min' => $temperature,
+                'temperature_max' => $temperature,
+                'rain_sum' => 0.0,
+                'precipitation_sum' => 0.0,
+                'precipitation_hours' => 0,
+                'wind_speed_max' => 0.0,
+                'wind_gusts_max' => null,
+            ];
+        }
+        $dailyGroups[$dateKey]['temperature_min'] = min($dailyGroups[$dateKey]['temperature_min'], $temperature);
+        $dailyGroups[$dateKey]['temperature_max'] = max($dailyGroups[$dateKey]['temperature_max'], $temperature);
+        $dailyGroups[$dateKey]['rain_sum'] += $precipitation;
+        $dailyGroups[$dateKey]['precipitation_sum'] += $precipitation;
+        $dailyGroups[$dateKey]['precipitation_hours'] += $precipitation > 0 ? 1 : 0;
+        $dailyGroups[$dateKey]['wind_speed_max'] = max($dailyGroups[$dateKey]['wind_speed_max'], $windSpeed);
+        if (isset($details['wind_speed_of_gust'])) {
+            $gustSpeed = (float) $details['wind_speed_of_gust'] * 3.6;
+            $dailyGroups[$dateKey]['wind_gusts_max'] = $dailyGroups[$dateKey]['wind_gusts_max'] === null
+                ? $gustSpeed
+                : max($dailyGroups[$dateKey]['wind_gusts_max'], $gustSpeed);
+        }
+        if (weather_severity_rank(weather_severity_for($code)) > weather_severity_rank(weather_severity_for($dailyGroups[$dateKey]['weather_code']))) {
+            $dailyGroups[$dateKey]['weather_code'] = $code;
+        }
+
+        $difference = abs($timestamp->getTimestamp() - $now->getTimestamp());
+        if ($difference < $smallestTimeDifference) {
+            $currentIndex = count($hourly) - 1;
+            $smallestTimeDifference = $difference;
+        }
+    }
+
+    $currentHour = $hourly[$currentIndex];
+    $currentCode = $currentHour['weather_code'];
+    $current = $currentHour + [
+        'showers' => $currentHour['precipitation'],
+        'is_day' => (int) ((int) $now->format('G') >= 6 && (int) $now->format('G') < 18),
+    ];
+    $forecast = [];
+    $severity = weather_severity_for($currentCode);
+    foreach (array_slice($dailyGroups, 0, 7, true) as $day) {
+        $day['summary'] = weather_code_label($day['weather_code']);
+        $day['sunrise'] = '';
+        $day['sunset'] = '';
+        $day['daylight_hours'] = null;
+        $day['sunshine_hours'] = null;
+        if (weather_severity_rank(weather_severity_for($day['weather_code'])) > weather_severity_rank($severity)) {
+            $severity = weather_severity_for($day['weather_code']);
+        }
+        $forecast[] = $day;
+    }
+
+    return [
+        'location' => WEATHER_LOCATION,
+        'summary' => weather_code_label($currentCode),
+        'temperature' => $currentHour['temperature'],
+        'severity' => $severity,
+        'recommendation' => weather_recommendation($severity),
+        'source_name' => 'MET Norway',
+        'source_url' => $url,
+        'current' => $current,
+        'hourly' => $hourly,
+        'forecast' => $forecast,
+    ];
+}
+
+function weather_recommendation(string $severity): string
+{
+    return match ($severity) {
         'Warning' => 'Thunderstorms are forecast. Prepare a weather advisory and monitor PAGASA updates.',
         'Watch' => 'Rain is forecast. Review conditions before publishing a weather-related advisory.',
         default => 'No immediate weather announcement is suggested.',
     };
+}
 
-    return [
-        'location' => WEATHER_LOCATION,
-        'summary' => $summary,
-        'temperature' => $temperature,
-        'severity' => $severity,
-        'recommendation' => $recommendation,
-        'source_url' => $url,
-        'current' => [
-            'time' => (string) ($current['time'] ?? ''),
-            'temperature' => $temperature,
-            'rain' => (float) ($current['rain'] ?? 0),
-            'precipitation' => (float) ($current['precipitation'] ?? 0),
-            'showers' => (float) ($current['showers'] ?? 0),
-            'weather_code' => $currentCode,
-            'cloud_cover' => (int) ($current['cloud_cover'] ?? 0),
-            'wind_speed' => (float) ($current['wind_speed_10m'] ?? 0),
-            'wind_direction' => (int) ($current['wind_direction_10m'] ?? 0),
-        ],
-        'hourly' => $hourly,
-        'forecast' => $forecast,
-    ];
+function fetch_weather_advisory(): array
+{
+    try {
+        return fetch_open_meteo_advisory();
+    } catch (Throwable $openMeteoException) {
+        try {
+            $weather = fetch_met_no_advisory();
+            $weather['recommendation'] .= ' Open-Meteo was unavailable; these conditions are from MET Norway.';
+            error_log('Open-Meteo fetch failed; using MET Norway fallback: ' . $openMeteoException->getMessage());
+            return $weather;
+        } catch (Throwable $fallbackException) {
+            throw new RuntimeException(
+                'Weather providers could not return data. Open-Meteo: ' . $openMeteoException->getMessage()
+                . ' MET Norway: ' . $fallbackException->getMessage(),
+                0,
+                $fallbackException
+            );
+        }
+    }
 }

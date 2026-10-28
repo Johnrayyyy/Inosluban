@@ -58,8 +58,9 @@ checks the request details against the person's valid photo ID, then confirms re
 Document pickup tokens are single-use; the portal creates the token table and
 adds the Released status constraint automatically for existing databases.
 The admin weather page fetches Open-Meteo current conditions, a seven-day
-forecast, and hourly data. Docker deployments install PHP cURL for this
-connection, and each fetch stores the complete current/hourly/daily payload in
+forecast, and hourly data, with MET Norway as a no-key fallback if Open-Meteo
+is unavailable or rate-limited. Docker deployments install PHP cURL for these
+connections, and each fetch stores the complete current/hourly/daily payload in
 the `weather_advisory.weather_data` JSONB column for use by the system.
 The registration terms are a working draft based on Philippine privacy
 requirements. Confirm the barangay's privacy contact, retention schedule, and
