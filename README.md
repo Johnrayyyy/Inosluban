@@ -60,8 +60,24 @@ adds the Released status constraint automatically for existing databases.
 The admin weather page fetches Open-Meteo current conditions, a seven-day
 forecast, and hourly data, with MET Norway as a no-key fallback if Open-Meteo
 is unavailable or rate-limited. Docker deployments install PHP cURL for these
-connections, and each fetch stores the complete current/hourly/daily payload in
-the `weather_advisory.weather_data` JSONB column for use by the system.
+connections. The admin weather dashboard reads its latest complete
+current/hourly/daily payload from the `weather_snapshot` table; refresh runs
+independently of resident or admin sign-in.
+
+To enable the hourly schedule on Render, create a **Cron Job** for this same
+repository and deployment branch. Use the same Dockerfile and region as the web
+service, set the schedule to `0 * * * *` (hourly, UTC), and set the command to:
+
+```text
+php /var/www/html/weather_cron.php
+```
+
+Attach the same environment group as the web service, or configure the same
+`DATABASE_URL` and weather settings. The cron job does not need SMTP credentials.
+It writes the current, hourly, and daily forecast payload to PostgreSQL; the
+dashboard displays the latest successful snapshot and reports refresh failures.
+After the cron job's first run, the dashboard updates automatically without
+anyone pressing a fetch button or being signed in.
 The registration terms are a working draft based on Philippine privacy
 requirements. Confirm the barangay's privacy contact, retention schedule, and
 service-specific data practices with its Data Protection Officer or legal

@@ -29,6 +29,72 @@ function ensure_admin_schema(): void
         )"
     );
     db()->exec('ALTER TABLE weather_advisory ADD COLUMN IF NOT EXISTS weather_data JSONB');
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS weather_snapshot (
+            snapshot_id SMALLINT PRIMARY KEY CHECK (snapshot_id = 1),
+            weather_data JSONB,
+            fetched_at TIMESTAMPTZ,
+            attempted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_error TEXT
+        )"
+    );
+}
+
+function store_weather_snapshot(array $weather): void
+{
+    $weatherData = json_encode($weather, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+    $statement = db()->prepare(
+        "INSERT INTO weather_snapshot (snapshot_id, weather_data, fetched_at, attempted_at, last_error)
+         VALUES (1, CAST(:weather_data AS JSONB), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
+         ON CONFLICT (snapshot_id) DO UPDATE SET
+            weather_data = EXCLUDED.weather_data,
+            fetched_at = EXCLUDED.fetched_at,
+            attempted_at = EXCLUDED.attempted_at,
+            last_error = NULL"
+    );
+    $statement->execute(['weather_data' => $weatherData]);
+}
+
+function record_weather_sync_failure(string $error): void
+{
+    $statement = db()->prepare(
+        "INSERT INTO weather_snapshot (snapshot_id, attempted_at, last_error)
+         VALUES (1, CURRENT_TIMESTAMP, :last_error)
+         ON CONFLICT (snapshot_id) DO UPDATE SET
+            attempted_at = EXCLUDED.attempted_at,
+            last_error = EXCLUDED.last_error"
+    );
+    $statement->execute(['last_error' => substr($error, 0, 1000)]);
+}
+
+function latest_weather_snapshot(): ?array
+{
+    $snapshot = db()->query(
+        'SELECT weather_data, fetched_at, attempted_at, last_error
+         FROM weather_snapshot WHERE snapshot_id = 1'
+    )->fetch();
+    if (!$snapshot) {
+        return null;
+    }
+
+    $weather = is_string($snapshot['weather_data'])
+        ? json_decode($snapshot['weather_data'], true)
+        : $snapshot['weather_data'];
+    if (!is_array($weather)) {
+        return [
+            'fetched_at' => null,
+            'attempted_at' => $snapshot['attempted_at'],
+            'last_error' => $snapshot['last_error'],
+            'weather' => null,
+        ];
+    }
+
+    return [
+        'fetched_at' => $snapshot['fetched_at'],
+        'attempted_at' => $snapshot['attempted_at'],
+        'last_error' => $snapshot['last_error'],
+        'weather' => $weather,
+    ];
 }
 
 function admin_upload_image(string $field): ?string
@@ -96,6 +162,20 @@ function weather_wind_direction(int $degrees): string
 {
     $directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
     return $directions[(int) round((($degrees % 360) + 360) % 360 / 22.5) % 16];
+}
+
+function weather_icon_for(int $code): string
+{
+    return match (true) {
+        $code === 0, $code === 1 => 'bi-sun',
+        $code === 2 => 'bi-cloud-sun',
+        $code === 3 => 'bi-cloud',
+        in_array($code, [45, 48], true) => 'bi-cloud-fog',
+        in_array($code, [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82], true) => 'bi-cloud-rain',
+        in_array($code, [71, 73, 75, 77, 85, 86], true) => 'bi-cloud-snow',
+        in_array($code, [95, 96, 99], true) => 'bi-cloud-lightning-rain',
+        default => 'bi-cloud',
+    };
 }
 
 function weather_request_json(string $url, string $userAgent): array
