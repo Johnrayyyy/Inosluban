@@ -104,6 +104,16 @@ CREATE TABLE user_account (
 COMMENT ON COLUMN user_account.role IS
     'Defaults to resident for self-registration; staff and admin must be assigned by authorized administration code.';
 
+-- 3A. PASSWORD RESET TOKENS
+CREATE TABLE password_reset_token (
+    reset_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES user_account(user_id)
+        ON DELETE CASCADE,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 4. STAFF
 CREATE TABLE staff (
     staff_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

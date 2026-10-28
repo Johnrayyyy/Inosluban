@@ -291,17 +291,17 @@ a:hover { color: var(--red-dark); text-decoration: underline; }
 .login-page + .site-footer { display: none; }
 .login-page::before { background: linear-gradient(90deg, rgba(36, 4, 10, .22), rgba(74, 5, 13, .72)); }
 .login-page::after { width: 34rem; height: 34rem; right: 4%; top: 2%; background: rgba(255, 135, 118, .1); }
-.login-page .auth-shell { grid-template-columns: minmax(280px, 1.05fr) minmax(300px, .95fr); gap: clamp(2rem, 8vw, 8rem); max-width: 900px; align-items: center; }
+.login-page .auth-shell { grid-template-columns: minmax(320px, 1fr) minmax(400px, 1fr); gap: clamp(2rem, 6vw, 5rem); max-width: 1120px; align-items: center; }
 .login-page .login-brand { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; text-align: center; align-items: center; padding: 2rem; }
-.login-page .brand-logo { width: 140px; height: 140px; margin-bottom: 1rem; }
+.login-page .brand-logo { width: 170px; height: 170px; margin-bottom: 1rem; }
 .login-page .eyebrow { font-size: 1.25rem; letter-spacing: .03em; margin-bottom: .1rem; }
 .brand-location { font-size: 1rem; margin: 0; letter-spacing: .02em; }
 .brand-motto { font-family: Georgia, serif; font-style: italic; font-size: 1.15rem; line-height: 1.4; margin: 1.8rem 0 0; }
-.login-page .form-panel { max-width: 430px; width: 100%; justify-self: center; padding: 2.15rem 2.3rem; background: rgba(150, 104, 108, .42); border: 1px solid rgba(255, 255, 255, .5); border-radius: .7rem; box-shadow: 0 14px 35px rgba(29, 0, 6, .28), inset 0 1px 0 rgba(255, 255, 255, .28); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: white; }
+.login-page .form-panel { max-width: 550px; width: 100%; justify-self: center; padding: 2.7rem 2.8rem; background: rgba(150, 104, 108, .42); border: 1px solid rgba(255, 255, 255, .5); border-radius: .9rem; box-shadow: 0 14px 35px rgba(29, 0, 6, .28), inset 0 1px 0 rgba(255, 255, 255, .28); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: white; }
 .login-page .form-heading { margin-bottom: 1.35rem; }
 .login-page .form-heading h2 { color: white; font-size: 1.8rem; }
 .login-page .form-heading p, .login-page .login-options, .login-page .login-signup { color: rgba(255, 255, 255, .88) !important; font-size: .85rem; }
-.login-page .form-control { color: white; background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .28); border-radius: .5rem; font-size: .9rem; min-height: 48px; padding-top: .65rem; padding-bottom: .65rem; }
+.login-page .form-control { color: white; background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .28); border-radius: .5rem; font-size: 1rem; min-height: 56px; padding-top: .75rem; padding-bottom: .75rem; }
 .login-page .form-control::placeholder { color: rgba(255, 255, 255, .8); }
 .login-page .form-control:focus { background: rgba(255, 255, 255, .2); border-color: rgba(255, 255, 255, .75); box-shadow: 0 0 0 .15rem rgba(255, 255, 255, .12); }
 .input-with-icon > i { position: absolute; left: .8rem; top: 50%; z-index: 2; transform: translateY(-50%); color: white; font-size: .95rem; }
@@ -312,49 +312,41 @@ a:hover { color: var(--red-dark); text-decoration: underline; }
 .login-options .form-check { display: flex; align-items: center; gap: .25rem; }
 .login-options .form-check-input { margin: 0; width: 1rem; height: 1rem; }
 .login-options a { color: white; font-weight: 400; }
-.login-submit { min-height: 48px; padding: .65rem 1rem; border-radius: 1.2rem; background: #a40b2c; border-color: #c32949; font-size: .9rem; }
+.login-submit { min-height: 54px; padding: .75rem 1rem; border-radius: 1.2rem; background: #a40b2c; border-color: #c32949; font-size: 1rem; }
 .login-submit:hover, .login-submit:focus { background: #870722; border-color: #e05a74; }
-.login-divider { display: flex; align-items: center; gap: .7rem; margin: 1.2rem 0 .85rem; color: rgba(255, 255, 255, .8); font-size: .75rem; }
-.login-divider::before, .login-divider::after { content: ""; height: 1px; flex: 1; background: rgba(255, 255, 255, .3); }
-.social-buttons { display: grid; gap: .55rem; }
-.btn-social { min-height: 42px; padding: .55rem .7rem; border: 1px solid rgba(255, 255, 255, .42); border-radius: 1rem; background: transparent; color: white; font-size: .8rem; }
-.btn-social:hover { color: white; background: rgba(255, 255, 255, .15); border-color: rgba(255, 255, 255, .7); }
-.btn-social strong { font-size: .85rem; margin-right: .4rem; }
+.auth-link-button { border: 0; padding: 0; background: transparent; color: white; font: inherit; }
+.auth-link-button:hover { text-decoration: underline; }
 .login-signup a { color: white; font-weight: 600; }
 .registration-page { min-height: 100vh; }
 .registration-page::before { background: linear-gradient(100deg, rgba(65, 4, 11, .72), rgba(83, 6, 13, .56)); }
 .registration-page > .container { position: relative; }
-.registration-hero { position: absolute; z-index: 2; top: 50%; left: 0; width: 220px; transform: translateY(-50%); color: white; text-align: center; text-shadow: 0 2px 10px rgba(0, 0, 0, .4); }
-.registration-floating-logo { display: block; width: 120px; height: 120px; object-fit: contain; margin: 0 auto .8rem; }
-.registration-hero .eyebrow { font-size: 1.15rem; letter-spacing: .02em; margin-bottom: .1rem; }
-.registration-hero .brand-location { font-size: .9rem; }
-.registration-hero .brand-motto { font-size: 1.05rem; margin-top: 1.2rem; }
-.registration-page .auth-shell { grid-template-columns: 175px minmax(0, 1fr); width: calc(100% - 250px); max-width: none; margin: 1.5rem 0 0 250px; gap: .8rem; align-items: stretch; }
+.registration-hero { position: static; z-index: 2; width: fit-content; transform: none; display: flex; align-items: center; justify-content: center; gap: 1.25rem; margin: 0 auto 1.5rem; color: white; text-align: left; text-shadow: 0 2px 10px rgba(0, 0, 0, .4); }
+.registration-floating-logo { display: block; width: 118px; height: 118px; object-fit: contain; margin: 0; }
+.registration-brand-copy .eyebrow { font-size: 1.25rem; letter-spacing: .03em; margin-bottom: .1rem; }
+.registration-brand-copy .brand-location { font-size: 1rem; }
+.registration-brand-copy .brand-motto { font-size: 1.05rem; margin-top: .6rem; }
+.registration-page .auth-shell { grid-template-columns: minmax(220px, .34fr) minmax(0, 1fr); width: 100%; max-width: 1280px; margin: 0 auto; gap: 1.25rem; align-items: stretch; }
 .registration-page .auth-shell > * { min-width: 0; }
-.registration-page .registration-brand { border-radius: 12px; padding: 1rem .7rem; text-align: center; align-items: center; background: linear-gradient(160deg, rgba(112, 9, 18, .8), rgba(48, 2, 9, .75)); }
-.registration-page .registration-brand .brand-logo { width: 70px; height: 70px; margin-bottom: .4rem; }
-.registration-page .registration-brand .eyebrow { font-size: .65rem; letter-spacing: .02em; margin-bottom: .1rem; }
-.registration-page .brand-location { font-size: .55rem; }
-.registration-page .brand-motto { font-size: .68rem; margin-top: 1.4rem; }
-.registration-steps { color: white; padding: 1.2rem .9rem; border: 1px solid rgba(255, 255, 255, .34); border-radius: 12px; background: rgba(84, 4, 13, .58); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-.registration-steps h2 { font-size: 1.15rem; margin-bottom: .5rem; }
-.registration-steps > p { color: rgba(255,255,255,.8); font-size: .72rem; line-height: 1.45; }
-.registration-steps .steps-list { gap: .9rem; margin-top: 1.2rem; font-size: .75rem; }
+.registration-steps { color: white; padding: 1.6rem 1.25rem; border: 1px solid rgba(255, 255, 255, .34); border-radius: 14px; background: rgba(84, 4, 13, .58); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.registration-steps h2 { font-size: 1.35rem; margin-bottom: .6rem; }
+.registration-steps > p { color: rgba(255,255,255,.8); font-size: .9rem; line-height: 1.5; }
+.registration-steps .steps-list { gap: 1rem; margin-top: 1.4rem; font-size: .85rem; }
 .registration-steps .steps-list span { gap: .45rem; }
-.registration-steps .steps-list b { width: 24px; height: 24px; font-size: .72rem; }
-.steps-help { display: flex; gap: .55rem; border-top: 1px solid rgba(255,255,255,.2); margin-top: 2rem; padding-top: 1rem; font-size: .72rem; }
-.steps-help i { font-size: 1rem; }
-.steps-help small { display: block; color: rgba(255,255,255,.7); margin-top: .2rem; font-size: .65rem; }
+.registration-steps .steps-list b { width: 30px; height: 30px; font-size: .8rem; }
+.steps-help { display: flex; gap: .65rem; border-top: 1px solid rgba(255,255,255,.2); margin-top: 2rem; padding-top: 1rem; font-size: .85rem; }
+.steps-help i { font-size: 1.1rem; }
+.steps-help small { display: block; color: rgba(255,255,255,.7); margin-top: .2rem; font-size: .75rem; }
 .registration-page .form-panel { border-radius: 12px; padding: 1.4rem 1.6rem; }
-.registration-page .form-heading { margin-bottom: 1rem; }
-.registration-page .form-heading h2 { font-size: 1.35rem; }
-.registration-page .form-heading p { font-size: .8rem; }
+.registration-page .form-panel { padding: 2rem 2.25rem; }
+.registration-page .form-heading { margin-bottom: 1.35rem; }
+.registration-page .form-heading h2 { font-size: 1.6rem; }
+.registration-page .form-heading p { font-size: .95rem; }
 .registration-page .section-title { font-size: .95rem; margin-bottom: .6rem; }
 .registration-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 1rem; }
-.registration-fields .form-label { font-size: .75rem; }
+.registration-fields .form-label { font-size: .9rem; }
 .registration-fields .form-label span { color: var(--red); }
-.registration-fields .form-control { min-height: 38px; padding: .45rem .6rem; font-size: .8rem; border-radius: .4rem; }
-.registration-fields .mb-2 { margin-bottom: .35rem !important; }
+.registration-fields .form-control { min-height: 48px; padding: .6rem .75rem; font-size: .95rem; border-radius: .45rem; }
+.registration-fields .mb-2 { margin-bottom: .7rem !important; }
 .registration-security { border-top: 1px solid rgba(142, 7, 16, .12); margin-top: .5rem; padding-top: .65rem; }
 .registration-security .form-label { font-size: .75rem; }
 .registration-security .form-control { min-height: 38px; padding: .45rem .6rem; font-size: .8rem; }
@@ -368,8 +360,21 @@ a:hover { color: var(--red-dark); text-decoration: underline; }
 .review-summary div { display: grid; gap: .15rem; border-bottom: 1px solid rgba(142, 7, 16, .12); padding: .4rem 0; }
 .review-summary strong { color: var(--red); font-size: .72rem; }
 .review-summary span { font-size: .8rem; overflow-wrap: anywhere; }
-.terms-check { font-size: .85rem; }
+.terms-check { font-size: .95rem; }
+.terms-content { max-height: 65vh; overflow-y: auto; line-height: 1.6; }
+.terms-content h3 { margin-top: 1.25rem; font-size: 1rem; color: var(--red-dark); }
+.terms-content p { margin-bottom: .8rem; }
+.auth-modal .modal-content { border: 0; border-radius: 1rem; box-shadow: 0 1rem 3rem rgba(0, 0, 0, .25); }
+.auth-modal .modal-header { border-bottom-color: rgba(142, 7, 16, .12); }
+.auth-modal .modal-title { color: var(--red-dark); font-weight: 700; }
 .registration-page > .container > .auth-shell + * { font-size: .7rem; }
+
+@media (min-width: 768px) and (max-width: 1000px) {
+    .login-page .auth-shell { grid-template-columns: minmax(240px, .8fr) minmax(340px, 1.2fr); gap: 1.5rem; }
+    .login-page .form-panel { padding: 2rem 1.8rem; }
+    .registration-page .auth-shell { grid-template-columns: minmax(190px, .35fr) minmax(0, 1fr); gap: .9rem; }
+    .registration-page .form-panel { padding: 1.6rem; }
+}
 
 @media (max-width: 767.98px) {
     .auth-page { align-items: flex-start; }
@@ -389,12 +394,15 @@ a:hover { color: var(--red-dark); text-decoration: underline; }
     .login-page .form-heading h2 { font-size: 1.55rem; }
     .login-page .form-control { min-height: 46px; }
     .registration-page .auth-shell { grid-template-columns: 1fr; gap: .8rem; }
-    .registration-hero { position: static; width: auto; transform: none; margin-bottom: 1rem; }
-    .registration-floating-logo { width: 82px; height: 82px; margin: 0 auto .35rem; }
+    .registration-hero { width: auto; gap: .75rem; margin-bottom: 1rem; }
+    .registration-floating-logo { width: 82px; height: 82px; }
+    .registration-brand-copy .eyebrow { font-size: 1rem; }
+    .registration-brand-copy .brand-location { font-size: .8rem; }
+    .registration-brand-copy .brand-motto { font-size: .85rem; margin-top: .35rem; }
     .registration-page .auth-shell { grid-template-columns: 1fr; width: 100%; margin: 0; }
     .registration-page .registration-brand { padding: 1.2rem; }
     .registration-page .registration-steps { order: 3; }
-    .registration-page .form-panel { padding: 1.25rem; }
+    .registration-page .form-panel { padding: 1.5rem; }
     .registration-fields { grid-template-columns: 1fr; }
     .review-summary { grid-template-columns: 1fr; }
     .wizard-actions { align-items: stretch; }

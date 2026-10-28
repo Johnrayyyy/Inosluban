@@ -297,3 +297,9 @@ if (blotterMapElement && typeof L !== 'undefined') {
         }
     });
 }
+
+if (window.bootstrap && window.bootstrap.Modal) {
+    document.querySelectorAll('[data-open-modal="true"]').forEach((modalElement) => {
+        window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    });
+}

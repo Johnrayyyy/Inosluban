@@ -42,6 +42,15 @@ the app automatically switches Brevo's configured port `587` to `2525`
 because Render blocks outbound SMTP on port `587`. Other SMTP providers keep
 using their configured port.
 
+The login page's password recovery sends a one-time email link that expires
+after one hour. Configure `APP_BASE_URL` to the externally reachable application
+URL for deployed environments; the reset-token table is also included in
+`schema.sql` and is created automatically when password recovery is first used.
+The registration terms are a working draft based on Philippine privacy
+requirements. Confirm the barangay's privacy contact, retention schedule, and
+service-specific data practices with its Data Protection Officer or legal
+adviser before relying on them as a final legal policy.
+
 ## Folder guide
 
 - `index.php` — login page and login processing.

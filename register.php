@@ -244,9 +244,11 @@ require __DIR__ . '/includes/header.php';
     <div class="container py-4 py-lg-5">
         <section class="registration-hero">
             <img src="assets/images/logo.png" alt="Barangay Inosluban logo" class="registration-floating-logo">
-            <p class="eyebrow">BARANGAY INOSLUBAN</p>
-            <p class="brand-location">LIPA CITY, BATANGAS</p>
-            <p class="brand-motto">A United Community<br>for a Progressive Tomorrow</p>
+            <div class="registration-brand-copy">
+                <p class="eyebrow">BARANGAY INOSLUBAN</p>
+                <p class="brand-location">LIPA CITY, BATANGAS</p>
+                <p class="brand-motto">A United Community<br>for a Progressive Tomorrow</p>
+            </div>
         </section>
         <div class="auth-shell">
             <section class="registration-steps">
@@ -334,7 +336,7 @@ require __DIR__ . '/includes/header.php';
                         </div>
                         <div class="form-check terms-check mt-4">
                             <input class="form-check-input" type="checkbox" id="terms" name="terms" value="accepted" required>
-                            <label class="form-check-label" for="terms">I have reviewed my information and agree to the terms and conditions.</label>
+                            <label class="form-check-label" for="terms">I have reviewed my information and agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms and Conditions</a>.</label>
                         </div>
                     <?php endif; ?>
 
@@ -348,4 +350,40 @@ require __DIR__ . '/includes/header.php';
         </div>
     </div>
 </main>
+<div class="modal fade auth-modal" id="termsModal" tabindex="-1" aria-labelledby="termsModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="termsModalTitle">Barangay Inosluban Portal Terms and Conditions</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body terms-content">
+                <p><strong>Effective date:</strong> <?= e(date('F j, Y')) ?></p>
+                <p>These terms govern your use of the Barangay Inosluban resident services portal. By creating an account, you confirm that the information you provide is accurate to the best of your knowledge and that you have read these terms.</p>
+
+                <h3>1. Account and acceptable use</h3>
+                <p>Keep your login credentials confidential, use your own account, and promptly notify the Barangay Inosluban office if you suspect unauthorized access. You are responsible for activity performed through your account unless caused by a security incident outside your control. Do not impersonate another person, submit false or unlawful information, interfere with portal operations, or use the portal to violate another person's rights or applicable law.</p>
+
+                <h3>2. Personal information and privacy</h3>
+                <p>Barangay Inosluban processes personal information submitted through this portal to create and administer resident accounts, verify residency and identity, respond to service requests, communicate about barangay services, maintain security, and meet applicable legal and public-service obligations. Information may include identity and contact details, address, birth and residency information, and supporting identification. Sensitive personal information, such as health, disability, or religious information, is collected only where requested for a stated service or record and processed subject to the lawful bases and safeguards required by law.</p>
+                <p>Processing is subject to Republic Act No. 10173 (Data Privacy Act of 2012), its Implementing Rules and Regulations, and applicable National Privacy Commission issuances. Depending on the specific processing, the lawful basis may include your informed consent, the performance of a public function or service, compliance with a legal obligation, or another basis permitted by the Act. Your consent to these portal terms does not replace any separate notice or consent required by law.</p>
+                <p>Access is limited to authorized barangay personnel and service providers who need the information for the purposes above and are required to protect it. Information may also be disclosed when required by law or lawful government process. Records are retained only for as long as needed for the stated purposes and applicable government records-retention requirements, then securely disposed of or anonymized. The Barangay applies reasonable organizational, physical, and technical safeguards; no internet system can guarantee absolute security.</p>
+                <p>Subject to legal conditions and exceptions, you may exercise your rights under the Data Privacy Act, including the right to be informed, access, object, rectify, erase or block, and seek redress. To make a privacy request or raise a concern, contact Barangay Inosluban through its official barangay office channels and ask for the person responsible for data privacy. Identity verification may be required before a request is processed.</p>
+
+                <h3>3. Portal availability and service decisions</h3>
+                <p>The portal is provided to support barangay services. Features may be changed or temporarily unavailable for maintenance, security, or operational reasons. Submitting a request online does not by itself guarantee approval, issuance of a document, or a particular response time; applicable requirements and official barangay procedures continue to apply.</p>
+
+                <h3>4. Your submitted content</h3>
+                <p>You confirm that you are authorized to submit information and documents associated with your account. Do not upload unlawful, misleading, malicious, or unrelated material. The Barangay may restrict or suspend access where reasonably necessary to protect the portal, its users, or the integrity of public services, subject to applicable law and due process.</p>
+
+                <h3>5. Changes and governing law</h3>
+                <p>These terms may be updated to reflect changes in the portal, services, or law. The version shown when you accept them applies to that acceptance; material changes will be presented for review where required. Philippine law governs these terms, without limiting rights that cannot be waived by agreement.</p>
+                <p class="small text-muted mb-0">For publication, Barangay Inosluban should confirm its privacy contact/DPO details, applicable retention schedule, and service-specific purposes with its Data Protection Officer or legal adviser.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 <?php require __DIR__ . '/includes/footer.php'; ?>
