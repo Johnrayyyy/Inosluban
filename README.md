@@ -81,6 +81,13 @@ It writes the current, hourly, and daily forecast payload to PostgreSQL; the
 dashboard displays the latest successful snapshot and reports refresh failures.
 After the cron job's first run, the dashboard updates automatically without
 anyone pressing a fetch button or being signed in.
+The admin Dashboard route opens `admin_analytics.php`. The analytics page
+summarizes service, weather-advisory, alert, notification, and staff-time data.
+Hourly weather refreshes are also recorded as observations, with recent saved
+advisories imported as initial history for the weather trend.
+Its AI outlook sends only aggregated metrics and the latest weather forecast to
+Gemini; no resident identities, account usernames, passwords, or contact details
+are included. Revenue is shown as untracked until payment collection is added.
 The registration terms are a working draft based on Philippine privacy
 requirements. Confirm the barangay's privacy contact, retention schedule, and
 service-specific data practices with its Data Protection Officer or legal
@@ -91,6 +98,7 @@ adviser before relying on them as a final legal policy.
 - `index.php` — login page and login processing.
 - `register.php` — registration page and validation.
 - `dashboard.php` — the first page shown after login.
+- `admin_analytics.php` — aggregate admin dashboard and AI outlook.
 - `logout.php` — safely ends the session.
 - `config/` — application settings.
 - `includes/bootstrap.php` — starts sessions, connects to SQLite, and contains shared security helpers.

@@ -38,21 +38,85 @@ function ensure_admin_schema(): void
             last_error TEXT
         )"
     );
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS weather_observation (
+            observation_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            observed_at TIMESTAMPTZ NOT NULL,
+            source_name VARCHAR(80) NOT NULL,
+            weather_summary TEXT NOT NULL,
+            weather_code INT,
+            temperature NUMERIC(6,2),
+            precipitation NUMERIC(8,2),
+            wind_speed NUMERIC(8,2),
+            cloud_cover SMALLINT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE (observed_at, source_name)
+        )"
+    );
+    db()->exec(
+        "INSERT INTO weather_observation (observed_at, source_name, weather_summary, temperature)
+         SELECT created_at, 'Saved advisory', weather_summary, temperature
+         FROM weather_advisory
+         WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '90 days'
+           AND temperature IS NOT NULL
+         ON CONFLICT (observed_at, source_name) DO NOTHING"
+    );
 }
 
 function store_weather_snapshot(array $weather): void
 {
     $weatherData = json_encode($weather, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
-    $statement = db()->prepare(
-        "INSERT INTO weather_snapshot (snapshot_id, weather_data, fetched_at, attempted_at, last_error)
-         VALUES (1, CAST(:weather_data AS JSONB), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
-         ON CONFLICT (snapshot_id) DO UPDATE SET
-            weather_data = EXCLUDED.weather_data,
-            fetched_at = EXCLUDED.fetched_at,
-            attempted_at = EXCLUDED.attempted_at,
-            last_error = NULL"
-    );
-    $statement->execute(['weather_data' => $weatherData]);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $statement = $pdo->prepare(
+            "INSERT INTO weather_snapshot (snapshot_id, weather_data, fetched_at, attempted_at, last_error)
+             VALUES (1, CAST(:weather_data AS JSONB), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL)
+             ON CONFLICT (snapshot_id) DO UPDATE SET
+                weather_data = EXCLUDED.weather_data,
+                fetched_at = EXCLUDED.fetched_at,
+                attempted_at = EXCLUDED.attempted_at,
+                last_error = NULL"
+        );
+        $statement->execute(['weather_data' => $weatherData]);
+
+        $observedAt = (new DateTimeImmutable(
+            (string) $weather['current']['time'],
+            new DateTimeZone(WEATHER_TIMEZONE)
+        ))->format(DATE_ATOM);
+        $observation = $pdo->prepare(
+            "INSERT INTO weather_observation (
+                observed_at, source_name, weather_summary, weather_code,
+                temperature, precipitation, wind_speed, cloud_cover
+             ) VALUES (
+                :observed_at, :source_name, :weather_summary, :weather_code,
+                :temperature, :precipitation, :wind_speed, :cloud_cover
+             )
+             ON CONFLICT (observed_at, source_name) DO UPDATE SET
+                weather_summary = EXCLUDED.weather_summary,
+                weather_code = EXCLUDED.weather_code,
+                temperature = EXCLUDED.temperature,
+                precipitation = EXCLUDED.precipitation,
+                wind_speed = EXCLUDED.wind_speed,
+                cloud_cover = EXCLUDED.cloud_cover"
+        );
+        $observation->execute([
+            'observed_at' => $observedAt,
+            'source_name' => (string) $weather['source_name'],
+            'weather_summary' => (string) $weather['summary'],
+            'weather_code' => $weather['current']['weather_code'] ?? null,
+            'temperature' => $weather['current']['temperature'] ?? null,
+            'precipitation' => $weather['current']['precipitation'] ?? null,
+            'wind_speed' => $weather['current']['wind_speed'] ?? null,
+            'cloud_cover' => $weather['current']['cloud_cover'] ?? null,
+        ]);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $exception;
+    }
 }
 
 function record_weather_sync_failure(string $error): void

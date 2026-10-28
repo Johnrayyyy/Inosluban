@@ -1,5 +1,8 @@
 <?php
 $staffModule = basename($_SERVER['PHP_SELF']);
+$dashboardUrl = ($_SESSION['user']['role'] ?? '') === 'admin'
+    ? 'admin_analytics.php'
+    : 'staff_dashboard.php';
 $staffCounts = [
     'document_request.php' => (int) db()->query("SELECT COUNT(*) FROM document_request WHERE status = 'Pending'")->fetchColumn(),
     'blotter.php' => (int) db()->query("SELECT COUNT(*) FROM blotter WHERE status IN ('Pending', 'Under Review', 'In Progress')")->fetchColumn(),
@@ -7,7 +10,7 @@ $staffCounts = [
 ];
 ?>
 <nav class="dashboard-nav staff-nav" aria-label="Staff portal navigation">
-    <a class="<?= $staffModule === 'staff_dashboard.php' ? 'active' : '' ?>" href="staff_dashboard.php"><i class="bi bi-house-fill"></i>Dashboard</a>
+    <a class="<?= $staffModule === $dashboardUrl ? 'active' : '' ?>" href="<?= e($dashboardUrl) ?>"><i class="bi bi-house-fill"></i>Dashboard</a>
     <a class="<?= ($_GET['type'] ?? '') === 'documents' ? 'active' : '' ?>" href="staff_requests.php?type=documents"><i class="bi bi-file-earmark-text"></i>Document Requests<?php if ($staffCounts['document_request.php'] > 0): ?><b class="staff-nav-badge"><?= $staffCounts['document_request.php'] ?></b><?php endif; ?></a>
     <a class="<?= ($_GET['type'] ?? '') === 'blotter' ? 'active' : '' ?>" href="staff_requests.php?type=blotter"><i class="bi bi-shield-check"></i>Blotter<?php if ($staffCounts['blotter.php'] > 0): ?><b class="staff-nav-badge"><?= $staffCounts['blotter.php'] ?></b><?php endif; ?></a>
     <a class="<?= ($_GET['type'] ?? '') === 'appointments' ? 'active' : '' ?>" href="staff_requests.php?type=appointments"><i class="bi bi-calendar3"></i>Appointments<?php if ($staffCounts['appointment.php'] > 0): ?><b class="staff-nav-badge"><?= $staffCounts['appointment.php'] ?></b><?php endif; ?></a>

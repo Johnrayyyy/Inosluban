@@ -1114,3 +1114,132 @@ a:hover { color: var(--red-dark); text-decoration: underline; }
     .weather-history-status { margin-left: 48px; }
     .weather-history-actions { margin-left: auto; }
 }
+
+.analytics-dashboard .dashboard-content { background: #f3f5f9; }
+.analytics-main { width: min(1500px, 100%); padding-top: 1.5rem; }
+.analytics-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; margin-bottom: 1.1rem; }
+.analytics-heading .eyebrow { margin: 0 0 .3rem; color: #aa1735; font-size: .64rem; font-weight: 800; letter-spacing: .12em; }
+.analytics-heading h1 { margin: 0; color: #242a36; font-size: clamp(1.7rem, 3vw, 2.2rem); font-weight: 800; }
+.analytics-heading p { margin: .25rem 0 0; color: #7e8795; font-size: .75rem; }
+.analytics-updated { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .7rem; border: 1px solid #e3e7ed; border-radius: .6rem; background: #fff; color: #798291; font-size: .63rem; white-space: nowrap; }
+.analytics-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-bottom: .85rem; }
+.analytics-kpi { display: flex; align-items: center; gap: .75rem; min-width: 0; padding: .9rem; border: 1px solid #e6e9ef; border-radius: .8rem; background: #fff; box-shadow: 0 4px 15px rgba(31,43,66,.04); }
+.analytics-kpi-icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: .7rem; background: #f0edff; color: #7261c4; font-size: 1.15rem; }
+.analytics-kpi-documents .analytics-kpi-icon { background: #fff0e8; color: #db783f; }
+.analytics-kpi-households .analytics-kpi-icon { background: #e8f4ff; color: #4384bd; }
+.analytics-kpi-appointments .analytics-kpi-icon { background: #e8f4ff; color: #4384bd; }
+.analytics-kpi-blotter .analytics-kpi-icon { background: #ffecef; color: #c45063; }
+.analytics-kpi-staff .analytics-kpi-icon { background: #e8f7ef; color: #378760; }
+.analytics-kpi-revenue .analytics-kpi-icon { background: #fff5dd; color: #b38326; }
+.analytics-kpi-alerts .analytics-kpi-icon { background: #fff0e8; color: #ce694b; }
+.analytics-kpi > div { display: grid; gap: .1rem; min-width: 0; }
+.analytics-kpi small { color: #808997; font-size: .62rem; }
+.analytics-kpi strong { overflow: hidden; color: #29303c; font-size: 1.35rem; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.analytics-kpi-revenue strong { font-size: .92rem; }
+.analytics-kpi > div > span { overflow: hidden; color: #a0a6b0; font-size: .56rem; text-overflow: ellipsis; white-space: nowrap; }
+.analytics-panel { min-width: 0; padding: 1rem; border: 1px solid #e6e9ef; border-radius: .85rem; background: #fff; box-shadow: 0 4px 15px rgba(31,43,66,.04); }
+.analytics-ai-panel { margin-bottom: .85rem; border-color: #e4dff5; background: linear-gradient(125deg,#fff,#fbfaff); }
+.analytics-panel-heading { display: flex; align-items: center; gap: .65rem; }
+.analytics-panel-heading > div { flex: 1; min-width: 0; }
+.analytics-panel-heading h2 { margin: 0; color: #303642; font-size: .82rem; font-weight: 800; }
+.analytics-panel-heading p { margin: .18rem 0 0; color: #9299a5; font-size: .59rem; line-height: 1.45; }
+.analytics-panel-icon { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border-radius: .65rem; background: #f0edff; color: #7563c4; font-size: 1rem; }
+.analytics-ai-icon { background: #ece7ff; color: #7053c6; }
+.analytics-doc-icon { background: #fff0e8; color: #d97742; }
+.analytics-type-icon { background: #edf2ff; color: #536fc0; }
+.analytics-week-icon { background: #e7f6f1; color: #379477; }
+.analytics-status-icon { background: #fff1e2; color: #bf7a2d; }
+.analytics-weather-icon { background: #e7f3ff; color: #4a87c2; }
+.analytics-staff-icon { background: #e9f6ec; color: #4a9562; }
+.analytics-resident-icon { background: #e9efff; color: #647ac0; }
+.analytics-blotter-icon { background: #fff0ee; color: #c26458; }
+.analytics-comms-icon { background: #f7eafd; color: #9c64b1; }
+.analytics-alert-icon { background: #fff0e8; color: #ce694b; }
+.analytics-ai-panel .analytics-panel-heading { align-items: flex-start; }
+.analytics-ai-button { flex: 0 0 auto; padding: .48rem .7rem; font-size: .62rem; white-space: nowrap; }
+.analytics-ai-result { margin-top: .9rem; padding: .9rem; border: 1px solid #e8e4f2; border-radius: .65rem; background: #fff; color: #454459; font-size: .72rem; line-height: 1.7; white-space: pre-wrap; }
+.analytics-ai-placeholder { display: flex; gap: .4rem; margin: .75rem 0 0; color: #858393; font-size: .62rem; line-height: 1.5; }
+.analytics-ai-placeholder i { color: #866ed0; }
+.analytics-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: .8rem; }
+.analytics-month-bars { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: end; gap: .35rem; height: 165px; margin-top: .9rem; padding-top: .6rem; }
+.analytics-month-bar { display: grid; grid-template-rows: 18px 1fr 17px; align-items: end; justify-items: center; gap: .2rem; height: 100%; }
+.analytics-bar-value { color: #87909c; font-size: .5rem; }
+.analytics-bar-track { display: flex; align-items: end; width: min(100%, 22px); height: 100%; overflow: hidden; border-radius: .3rem .3rem 0 0; background: #f3f5f8; }
+.analytics-bar-track span { display: block; width: 100%; min-height: 2px; border-radius: .3rem .3rem 0 0; background: linear-gradient(180deg,#f39972,#e96162); }
+.analytics-month-bar small { color: #989faa; font-size: .52rem; }
+.analytics-horizontal-bars { display: grid; gap: .9rem; margin-top: 1.1rem; }
+.analytics-horizontal-row > div:first-child { display: flex; justify-content: space-between; gap: .5rem; margin-bottom: .28rem; color: #67717f; font-size: .62rem; }
+.analytics-horizontal-row strong { color: #424a57; }
+.analytics-horizontal-track { height: 7px; overflow: hidden; border-radius: 9px; background: #f0f2f6; }
+.analytics-horizontal-track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#7086dc,#9f70d5); }
+.analytics-weekdays { display: grid; gap: .65rem; margin-top: 1rem; }
+.analytics-weekday-row { display: grid; grid-template-columns: 2rem minmax(0,1fr) 2rem; align-items: center; gap: .55rem; }
+.analytics-weekday-row > span { color: #747d8b; font-size: .6rem; }
+.analytics-weekday-row > div { height: 9px; overflow: hidden; border-radius: 9px; background: #f0f3f6; }
+.analytics-weekday-row > div i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#48b99a,#7dc8a5); }
+.analytics-weekday-row > strong { color: #4a5360; font-size: .6rem; text-align: right; }
+.analytics-status-list { display: grid; gap: .5rem; margin-top: .8rem; }
+.analytics-status-list > div { display: grid; grid-template-columns: 9px 1fr auto; align-items: center; gap: .4rem; color: #717a87; font-size: .6rem; }
+.analytics-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #e2a53a; }
+.analytics-status-dot.status-completed, .analytics-status-dot.status-released { background: #52a67b; }
+.analytics-status-dot.status-rejected, .analytics-status-dot.status-cancelled { background: #d66b75; }
+.analytics-status-dot.status-processing, .analytics-status-dot.status-approved { background: #5b8fd1; }
+.analytics-status-dot.status-inactive, .analytics-status-dot.status-moved, .analytics-status-dot.status-deceased { background: #a4aab4; }
+.analytics-status-list strong { color: #3f4753; }
+.analytics-status-list > div > div { grid-column: 2 / -1; height: 4px; overflow: hidden; border-radius: 5px; background: #f0f2f5; }
+.analytics-status-list > div > div i { display: block; height: 100%; border-radius: inherit; background: #8394d4; }
+.analytics-subheading { margin: .9rem 0 .45rem; color: #555e6b; font-size: .65rem; font-weight: 800; }
+.analytics-appointment-tags { display: flex; flex-wrap: wrap; gap: .35rem; }
+.analytics-appointment-tags span { display: flex; gap: .35rem; align-items: center; padding: .3rem .45rem; border-radius: .4rem; background: #f4f6f9; color: #727b88; font-size: .53rem; }
+.analytics-appointment-tags strong { color: #444d5a; }
+.analytics-mini-summary { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .8rem; }
+.analytics-mini-summary > span { display: flex; gap: .35rem; padding: .3rem .45rem; border-radius: .4rem; background: #f4f6f9; color: #727b88; font-size: .53rem; }
+.analytics-mini-summary strong { color: #444d5a; }
+.analytics-category-list { display: grid; gap: .4rem; margin-top: .7rem; }
+.analytics-category-list > div { display: flex; justify-content: space-between; gap: .5rem; color: #77808c; font-size: .57rem; }
+.analytics-category-list strong { color: #454d59; }
+.analytics-disaster-total { margin: .8rem 0 0; color: #78818e; font-size: .58rem; }
+.analytics-disaster-total strong { color: #404955; font-size: .8rem; }
+.analytics-weather-list { display: grid; gap: .55rem; margin-top: .85rem; }
+.analytics-weather-list > div { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr) 2.4rem minmax(4rem, auto); align-items: center; gap: .45rem; color: #77818e; font-size: .55rem; }
+.analytics-weather-list > div > div { height: 7px; overflow: hidden; border-radius: 9px; background: #eef4fa; }
+.analytics-weather-list > div > div i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#72ace1,#e9a947); }
+.analytics-weather-list strong { color: #535c68; text-align: right; }
+.analytics-weather-list small { overflow: hidden; color: #8d96a3; text-overflow: ellipsis; white-space: nowrap; }
+.analytics-latest-weather { display: flex; align-items: center; gap: .5rem; margin-top: .8rem; padding: .55rem; border-radius: .55rem; background: #f3f8fc; color: #687789; font-size: .58rem; }
+.analytics-latest-weather i { color: #5795cf; font-size: .9rem; }
+.analytics-latest-weather strong { margin-left: auto; color: #3d4c5c; font-size: .68rem; }
+.analytics-weather-link { display: inline-flex; align-items: center; gap: .3rem; margin-top: .75rem; color: #8b5a9e; font-size: .59rem; font-weight: 700; }
+.analytics-staff-list { display: grid; gap: .6rem; margin-top: .9rem; }
+.analytics-staff-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) 42px; align-items: center; gap: .5rem; }
+.analytics-staff-avatar { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 50%; background: #e8f5ed; color: #42865c; font-size: .62rem; font-weight: 800; }
+.analytics-staff-name { display: grid; gap: .08rem; min-width: 0; }
+.analytics-staff-name strong { overflow: hidden; color: #4c5562; font-size: .6rem; text-overflow: ellipsis; white-space: nowrap; }
+.analytics-staff-name small { color: #969eaa; font-size: .52rem; }
+.analytics-staff-hours { display: grid; justify-items: end; }
+.analytics-staff-hours strong { color: #454f5d; font-size: .65rem; }
+.analytics-staff-hours small { color: #9aa2ad; font-size: .48rem; }
+.analytics-staff-track { grid-column: 2 / -1; height: 4px; overflow: hidden; margin-top: -.25rem; border-radius: 5px; background: #eff3f0; }
+.analytics-staff-track i { display: block; height: 100%; border-radius: inherit; background: #65b986; }
+.analytics-empty { margin: 1rem 0 0; color: #929aa6; font-size: .62rem; text-align: center; }
+.analytics-privacy-note { display: flex; gap: .4rem; margin: .85rem 0 0; color: #8b939f; font-size: .57rem; line-height: 1.5; }
+.analytics-privacy-note i { color: #56916f; }
+@media (max-width: 1000px) {
+    .analytics-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+    .analytics-chart-grid { grid-template-columns: 1fr; }
+    .analytics-heading { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 540px) {
+    .analytics-kpi-grid { gap: .5rem; }
+    .analytics-kpi { gap: .5rem; padding: .65rem; }
+    .analytics-kpi-icon { flex-basis: 34px; width: 34px; height: 34px; font-size: .95rem; }
+    .analytics-kpi strong { font-size: 1.1rem; }
+    .analytics-kpi-revenue strong { font-size: .76rem; }
+    .analytics-ai-panel .analytics-panel-heading { flex-wrap: wrap; }
+    .analytics-ai-panel .analytics-panel-heading > div { flex-basis: calc(100% - 48px); }
+    .analytics-ai-button { margin-left: 44px; }
+    .analytics-weather-list > div { grid-template-columns: 2.5rem minmax(0, 1fr) 2.4rem; }
+    .analytics-weather-list small { display: none; }
+}

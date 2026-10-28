@@ -5,7 +5,12 @@ require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/config/mailer.php';
 
 if (is_logged_in()) {
-    header('Location: dashboard.php');
+    $destination = match ($_SESSION['user']['role'] ?? 'resident') {
+        'admin' => 'admin_analytics.php',
+        'staff' => 'staff_dashboard.php',
+        default => 'dashboard.php',
+    };
+    header('Location: ' . $destination);
     exit;
 }
 
@@ -211,7 +216,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 unset($_SESSION['weather_refresh_on_login']);
             }
-            header('Location: ' . (in_array($user['role'], ['staff', 'admin'], true) ? 'staff_dashboard.php' : 'dashboard.php'));
+            $destination = match ($user['role']) {
+                'admin' => 'admin_analytics.php',
+                'staff' => 'staff_dashboard.php',
+                default => 'dashboard.php',
+            };
+            header('Location: ' . $destination);
             exit;
         }
 
