@@ -42,10 +42,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Document requests can only be marked released after scanning the resident pickup QR code.');
         }
         $set = $type === 'documents' ? 'status = :status, assigned_staff_id = :staff_id, remarks = NULLIF(:notes, \'\')'
-            : ($type === 'blotter' ? 'status = :status, assigned_staff_id = :staff_id, resolution_notes = NULLIF(:notes, \'\'), date_resolved = CASE WHEN :status IN (\'Resolved\', \'Closed\') THEN CURRENT_TIMESTAMP ELSE date_resolved END'
+            : ($type === 'blotter' ? 'status = :status, assigned_staff_id = :staff_id, resolution_notes = NULLIF(:notes, \'\'), date_resolved = CASE WHEN :resolved_status IN (\'Resolved\', \'Closed\') THEN CURRENT_TIMESTAMP ELSE date_resolved END'
             : 'status = :status, assigned_staff_id = :staff_id');
         $statement = db()->prepare("UPDATE {$config['table']} SET {$set} WHERE {$config['id']} = :record_id");
-        $statement->execute(['status' => $newStatus, 'staff_id' => (int) ($_SESSION['user']['staff_id'] ?? 0) ?: null, 'notes' => $notes, 'record_id' => $recordId]);
+        $parameters = [
+            'status' => $newStatus,
+            'staff_id' => (int) ($_SESSION['user']['staff_id'] ?? 0) ?: null,
+            'record_id' => $recordId,
+        ];
+        if ($type === 'documents' || $type === 'blotter') {
+            $parameters['notes'] = $notes;
+        }
+        if ($type === 'blotter') {
+            $parameters['resolved_status'] = $newStatus;
+        }
+        $statement->execute($parameters);
         if ($type === 'documents') {
             if ($newStatus === 'Completed') {
                 $pickupStatement = db()->prepare(
