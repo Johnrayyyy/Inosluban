@@ -57,6 +57,15 @@ deployed staff verification route. An authenticated staff member scans it,
 checks the request details against the person's valid photo ID, then confirms release.
 Document pickup tokens are single-use; the portal creates the token table and
 adds the Released status constraint automatically for existing databases.
+Staff and admins can prepare the supplied Clearance, Indigency, and Residency
+PDF originals from a request, edit the printout fields, and open the completed
+PDF for printing. Printout edits do not change the resident's submitted record.
+The source files live in `storage/document_templates/`, which denies direct web
+access; printing is handled by the authenticated staff-only route. Document
+request lists show open requests by default, provide completed/released and all
+request filters, and paginate ten records at a time. Admin audit logs can be
+searched across actor, action, record, table, and details, with Philippine-date
+filters.
 The admin weather page fetches Open-Meteo current conditions, a seven-day
 forecast, and hourly data, with MET Norway as a no-key fallback if Open-Meteo
 is unavailable or rate-limited. Docker deployments install PHP cURL for these
@@ -99,6 +108,7 @@ adviser before relying on them as a final legal policy.
 - `register.php` — registration page and validation.
 - `dashboard.php` — the first page shown after login.
 - `admin_analytics.php` — aggregate admin dashboard and AI outlook.
+- `staff_document_templates.php` — staff-only editing and printing from original document PDFs.
 - `logout.php` — safely ends the session.
 - `config/` — application settings.
 - `includes/bootstrap.php` — starts sessions, connects to SQLite, and contains shared security helpers.
@@ -107,6 +117,7 @@ adviser before relying on them as a final legal policy.
 - `assets/js/` — small browser enhancements such as show/hide password.
 - `assets/images/` — the supplied login reference, `barangay.jpg` page background, and barangay logo.
 - `database/` — private SQLite storage (blocked from direct Apache access).
+- `storage/document_templates/` — original PDFs, blocked from direct Apache access.
 
 ## Security included
 
@@ -117,6 +128,7 @@ adviser before relying on them as a final legal policy.
 - Output is escaped with `htmlspecialchars()` to reduce XSS risk.
 - Server-side validation is applied even when browser validation is bypassed.
 - The database folder is denied by Apache.
+- Original document templates are denied by Apache and are only used by the staff-authenticated PDF route.
 
 ## Growing the project
 

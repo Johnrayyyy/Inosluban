@@ -20,6 +20,12 @@ if ($type === 'documents') {
     ensure_document_pickup_schema();
 }
 $selectedId = filter_var($_GET['id'] ?? '', FILTER_VALIDATE_INT) ?: null;
+$statusView = (string) ($_GET['status_view'] ?? 'active');
+if (!in_array($statusView, ['active', 'completed', 'all'], true)) {
+    $statusView = 'active';
+}
+$currentPage = max(1, (int) (filter_var($_GET['page'] ?? 1, FILTER_VALIDATE_INT) ?: 1));
+$pageSize = 10;
 $message = '';
 $mailWarning = '';
 $errors = [];
@@ -109,12 +115,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 if ($type === 'documents') {
-    $rows = db()->query("SELECT dr.request_id AS record_id, dr.document_type AS request_type, dr.purpose, dr.request_date, dr.status, r.first_name, r.last_name, r.complete_address, r.residency_status, r.valid_id_file_path, r.resident_id FROM document_request dr JOIN resident r ON r.resident_id = dr.resident_id ORDER BY dr.request_date DESC")->fetchAll();
+    $statusCondition = match ($statusView) {
+        'completed' => "dr.status IN ('Completed', 'Released')",
+        'all' => 'TRUE',
+        default => "dr.status NOT IN ('Completed', 'Released', 'Rejected', 'Cancelled')",
+    };
+    $countStatement = db()->query("SELECT COUNT(*) FROM document_request dr WHERE {$statusCondition}");
+    $totalRows = (int) $countStatement->fetchColumn();
+    $totalPages = max(1, (int) ceil($totalRows / $pageSize));
+    $currentPage = min($currentPage, $totalPages);
+    $statement = db()->prepare(
+        "SELECT dr.request_id AS record_id, dr.document_type AS request_type, dr.purpose,
+                dr.request_date, dr.status, r.first_name, r.last_name, r.complete_address,
+                r.residency_status, r.valid_id_file_path, r.resident_id
+         FROM document_request dr
+         JOIN resident r ON r.resident_id = dr.resident_id
+         WHERE {$statusCondition}
+         ORDER BY dr.request_date DESC
+         LIMIT :page_size OFFSET :offset"
+    );
+    $statement->bindValue(':page_size', $pageSize, PDO::PARAM_INT);
+    $statement->bindValue(':offset', ($currentPage - 1) * $pageSize, PDO::PARAM_INT);
+    $statement->execute();
+    $rows = $statement->fetchAll();
 } elseif ($type === 'blotter') {
     $rows = db()->query("SELECT b.report_id AS record_id, b.category AS request_type, b.report_title AS purpose, b.report_date AS request_date, b.status, r.first_name, r.last_name, r.complete_address, r.residency_status, r.valid_id_file_path, r.resident_id FROM blotter b LEFT JOIN resident r ON r.resident_id = b.resident_id ORDER BY b.report_date DESC")->fetchAll();
+    $totalRows = count($rows);
+    $totalPages = 1;
 } else {
     $rows = db()->query("SELECT a.appointment_id AS record_id, a.service_type AS request_type, a.notes AS purpose, a.schedule AS request_date, a.status, r.first_name, r.last_name, r.complete_address, r.residency_status, r.valid_id_file_path, r.resident_id FROM appointment a JOIN resident r ON r.resident_id = a.resident_id ORDER BY a.schedule DESC")->fetchAll();
+    $totalRows = count($rows);
+    $totalPages = 1;
 }
+$pageUrl = static fn (int $page): string => 'staff_requests.php?type=' . rawurlencode($type)
+    . '&status_view=' . rawurlencode($statusView) . '&page=' . $page;
 $selected = null;
 foreach ($rows as $row) {
     if ((int) $row['record_id'] === $selectedId) {
@@ -131,8 +165,12 @@ require __DIR__ . '/includes/header.php';
         <header class="dashboard-topbar"><div class="dashboard-search"><i class="bi bi-search"></i><input type="search" placeholder="Search by resident, tracking number, or request type..." aria-label="Search requests"></div><div class="dashboard-user"><span class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e($_SESSION['user']['full_name']) ?></strong><small>Staff</small></span></div></header>
         <div class="staff-main"><div class="staff-hero compact"><div><p class="eyebrow">APPROVAL WORKSPACE</p><h1><?= e($config['title']) ?></h1><p>Review resident submissions and update their processing status.</p></div></div>
             <?php if ($message): ?><div class="alert alert-success"><?= e($message) ?></div><?php endif; ?><?php if ($mailWarning !== ''): ?><div class="alert alert-warning"><?= e($mailWarning) ?></div><?php endif; ?><?php foreach ($errors as $error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endforeach; ?>
-            <div class="staff-request-layout"><section class="staff-panel request-table-panel"><div class="staff-tabs"><a class="<?= $type === 'documents' ? 'active' : '' ?>" href="staff_requests.php?type=documents">Documents</a><a class="<?= $type === 'blotter' ? 'active' : '' ?>" href="staff_requests.php?type=blotter">Blotter</a><a class="<?= $type === 'appointments' ? 'active' : '' ?>" href="staff_requests.php?type=appointments">Appointments</a></div><div class="table-responsive"><table class="staff-table"><thead><tr><th>Reference</th><th>Resident</th><th>Type</th><th>Date</th><th>Status</th><th>Action</th></tr></thead><tbody><?php foreach ($rows as $row): ?><tr><td>#<?= (int) $row['record_id'] ?></td><td><?= e($row['first_name'] . ' ' . $row['last_name']) ?></td><td><?= e($row['request_type']) ?></td><td><?= e((new DateTime($row['request_date']))->format('M j, Y g:i A')) ?></td><td><span class="staff-status"><?= e($row['status']) ?></span></td><td><a class="btn btn-sm btn-outline-primary" href="staff_requests.php?type=<?= e($type) ?>&id=<?= (int) $row['record_id'] ?>">View</a></td></tr><?php endforeach; ?><?php if ($rows === []): ?><tr><td colspan="6">No requests found.</td></tr><?php endif; ?></tbody></table></div></section>
-                <?php if ($selected): ?><aside class="staff-panel staff-detail"><div class="staff-detail-heading"><h2>Request details</h2><a href="staff_requests.php?type=<?= e($type) ?>" aria-label="Close details">&times;</a></div><details open><summary>Resident verification</summary><p><strong><?= e($selected['first_name'] . ' ' . $selected['last_name']) ?></strong></p><p><?= e($selected['complete_address']) ?></p><span class="verification-badge"><i class="bi bi-check-circle"></i> <?= e($selected['residency_status'] === 'Active' ? 'Verified resident record' : 'Review residency status') ?></span></details><details open><summary>Submitted information</summary><p><strong><?= e($selected['request_type']) ?></strong></p><p><?= nl2br(e((string) $selected['purpose'])) ?></p><p>Status: <?= e($selected['status']) ?></p></details><?php if ($type === 'documents' && $selected['status'] === 'Released'): ?><div class="alert alert-success">Released after pickup QR verification.</div><?php else: ?><form method="post"><input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>"><input type="hidden" name="record_id" value="<?= (int) $selected['record_id'] ?>"><label class="form-label" for="status">Update status</label><select class="form-control" id="status" name="status"><?php foreach ($config['status'] as $status): ?><option <?= $status === $selected['status'] ? 'selected' : '' ?>><?= e($status) ?></option><?php endforeach; ?></select><label class="form-label mt-3" for="notes">Staff notes</label><textarea class="form-control" id="notes" name="notes" rows="3"></textarea><button class="btn btn-primary w-100 mt-3" type="submit">Save and log action</button><?php if ($type === 'documents' && $selected['request_type'] === 'Barangay Clearance'): ?><a class="btn btn-outline-primary w-100 mt-2" target="_blank" href="staff_clearance.php?id=<?= (int) $selected['record_id'] ?>">Preview clearance sample</a><?php endif; ?></form><?php endif; ?></aside><?php endif; ?></div>
+            <div class="staff-request-layout"><section class="staff-panel request-table-panel"><div class="staff-tabs"><a class="<?= $type === 'documents' ? 'active' : '' ?>" href="staff_requests.php?type=documents">Documents</a><a class="<?= $type === 'blotter' ? 'active' : '' ?>" href="staff_requests.php?type=blotter">Blotter</a><a class="<?= $type === 'appointments' ? 'active' : '' ?>" href="staff_requests.php?type=appointments">Appointments</a></div>
+                <?php if ($type === 'documents'): ?><form method="get" class="request-status-filter"><input type="hidden" name="type" value="documents"><label for="status-view">Show</label><select id="status-view" name="status_view" class="form-control"><option value="active" <?= $statusView === 'active' ? 'selected' : '' ?>>Open requests</option><option value="completed" <?= $statusView === 'completed' ? 'selected' : '' ?>>Completed / released</option><option value="all" <?= $statusView === 'all' ? 'selected' : '' ?>>All requests</option></select><button class="btn btn-outline-primary btn-sm" type="submit">Apply</button></form><?php endif; ?>
+                <div class="table-responsive"><table class="staff-table"><thead><tr><th>Reference</th><th>Resident</th><th>Type</th><th>Date</th><th>Status</th><th>Action</th></tr></thead><tbody><?php foreach ($rows as $row): ?><tr><td>#<?= (int) $row['record_id'] ?></td><td><?= e($row['first_name'] . ' ' . $row['last_name']) ?></td><td><?= e($row['request_type']) ?></td><td><?= e((new DateTime($row['request_date']))->format('M j, Y g:i A')) ?></td><td><span class="staff-status"><?= e($row['status']) ?></span></td><td><a class="btn btn-sm btn-outline-primary" href="<?= e($pageUrl($currentPage)) ?>&amp;id=<?= (int) $row['record_id'] ?>">View</a></td></tr><?php endforeach; ?><?php if ($rows === []): ?><tr><td colspan="6">No requests found.</td></tr><?php endif; ?></tbody></table></div>
+                <?php if ($type === 'documents'): ?><nav class="request-pagination" aria-label="Document request pages"><span>Showing <?= $totalRows === 0 ? 0 : (($currentPage - 1) * $pageSize + 1) ?>–<?= min($currentPage * $pageSize, $totalRows) ?> of <?= $totalRows ?></span><div><?php if ($currentPage > 1): ?><a class="btn btn-sm btn-outline-primary" href="<?= e($pageUrl($currentPage - 1)) ?>">Previous</a><?php endif; ?><span>Page <?= $currentPage ?> of <?= $totalPages ?></span><?php if ($currentPage < $totalPages): ?><a class="btn btn-sm btn-outline-primary" href="<?= e($pageUrl($currentPage + 1)) ?>">Next</a><?php endif; ?></div></nav><?php endif; ?>
+                </section>
+                <?php if ($selected): ?><aside class="staff-panel staff-detail"><div class="staff-detail-heading"><h2>Request details</h2><a href="<?= e($pageUrl($currentPage)) ?>" aria-label="Close details">&times;</a></div><details open><summary>Resident verification</summary><p><strong><?= e($selected['first_name'] . ' ' . $selected['last_name']) ?></strong></p><p><?= e($selected['complete_address']) ?></p><span class="verification-badge"><i class="bi bi-check-circle"></i> <?= e($selected['residency_status'] === 'Active' ? 'Verified resident record' : 'Review residency status') ?></span></details><details open><summary>Submitted information</summary><p><strong><?= e($selected['request_type']) ?></strong></p><p><?= nl2br(e((string) $selected['purpose'])) ?></p><p>Status: <?= e($selected['status']) ?></p></details><?php if ($type === 'documents' && $selected['status'] === 'Released'): ?><div class="alert alert-success">Released after pickup QR verification.</div><?php else: ?><form method="post"><input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>"><input type="hidden" name="record_id" value="<?= (int) $selected['record_id'] ?>"><label class="form-label" for="status">Update status</label><select class="form-control" id="status" name="status"><?php foreach ($config['status'] as $status): ?><option <?= $status === $selected['status'] ? 'selected' : '' ?>><?= e($status) ?></option><?php endforeach; ?></select><label class="form-label mt-3" for="notes">Staff notes</label><textarea class="form-control" id="notes" name="notes" rows="3"></textarea><button class="btn btn-primary w-100 mt-3" type="submit">Save and log action</button><?php if ($type === 'documents'): ?><a class="btn btn-outline-primary w-100 mt-2" href="staff_document_templates.php?id=<?= (int) $selected['record_id'] ?>"><i class="bi bi-printer"></i> Edit &amp; print official template</a><?php endif; ?></form><?php endif; ?></aside><?php endif; ?></div>
         </div>
     </section>
 </main>
