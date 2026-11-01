@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/staff.php';
 require_once __DIR__ . '/includes/document_templates.php';
-require_staff();
+require_general_staff_or_admin();
 header('Cache-Control: private, no-store, max-age=0');
 header('Referrer-Policy: no-referrer');
 

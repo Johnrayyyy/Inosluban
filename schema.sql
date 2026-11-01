@@ -22,9 +22,14 @@ CREATE TABLE household_record (
     household_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     address TEXT NOT NULL,
     purok VARCHAR(100) NOT NULL,
+    house_number VARCHAR(50),
     household_head_resident_id INT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE UNIQUE INDEX idx_household_record_purok_house_number
+    ON household_record (LOWER(BTRIM(purok)), LOWER(BTRIM(house_number)))
+    WHERE NULLIF(BTRIM(house_number), '') IS NOT NULL;
 
 -- 2. RESIDENT
 CREATE TABLE resident (

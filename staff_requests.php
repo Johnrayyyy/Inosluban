@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/staff.php';
-require_staff();
+require_general_staff_or_admin();
 ensure_staff_tables();
 $type = (string) ($_GET['type'] ?? 'documents');
 $config = [

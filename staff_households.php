@@ -18,33 +18,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'create_household') {
             $address = trim((string) ($_POST['address'] ?? ''));
             $purok = trim((string) ($_POST['purok'] ?? ''));
+            $houseNumber = trim((string) ($_POST['house_number'] ?? ''));
             if ($address === '' || $purok === '') {
                 throw new RuntimeException('Household address and purok are required.');
             }
+            if ($houseNumber !== '') {
+                $duplicateNumber = $pdo->prepare(
+                    "SELECT 1 FROM household_record
+                     WHERE LOWER(BTRIM(purok)) = LOWER(BTRIM(:purok))
+                       AND LOWER(BTRIM(house_number)) = LOWER(BTRIM(:house_number))"
+                );
+                $duplicateNumber->execute(['purok' => $purok, 'house_number' => $houseNumber]);
+                if ($duplicateNumber->fetchColumn()) {
+                    throw new RuntimeException('That house number is already used in this purok.');
+                }
+            }
             $insert = $pdo->prepare(
-                'INSERT INTO household_record (address, purok)
-                 VALUES (:address, :purok) RETURNING household_id'
+                'INSERT INTO household_record (address, purok, house_number)
+                 VALUES (:address, :purok, NULLIF(:house_number, \'\')) RETURNING household_id'
             );
-            $insert->execute(['address' => $address, 'purok' => $purok]);
+            $insert->execute(['address' => $address, 'purok' => $purok, 'house_number' => $houseNumber]);
             $householdId = (int) $insert->fetchColumn();
-            staff_audit('HOUSEHOLD_CREATED', 'household_record', $householdId, ['purok' => $purok]);
+            staff_audit('HOUSEHOLD_CREATED', 'household_record', $householdId, ['purok' => $purok, 'house_number' => $houseNumber]);
             $message = 'Household created.';
         } elseif ($action === 'update_household') {
             $householdId = filter_var($_POST['household_id'] ?? '', FILTER_VALIDATE_INT);
             $address = trim((string) ($_POST['address'] ?? ''));
             $purok = trim((string) ($_POST['purok'] ?? ''));
+            $houseNumber = trim((string) ($_POST['house_number'] ?? ''));
             if (!$householdId || $address === '' || $purok === '') {
                 throw new RuntimeException('Select a household and provide its address and purok.');
             }
+            if ($houseNumber !== '') {
+                $duplicateNumber = $pdo->prepare(
+                    "SELECT 1 FROM household_record
+                     WHERE household_id <> :household_id
+                       AND LOWER(BTRIM(purok)) = LOWER(BTRIM(:purok))
+                       AND LOWER(BTRIM(house_number)) = LOWER(BTRIM(:house_number))"
+                );
+                $duplicateNumber->execute([
+                    'household_id' => $householdId,
+                    'purok' => $purok,
+                    'house_number' => $houseNumber,
+                ]);
+                if ($duplicateNumber->fetchColumn()) {
+                    throw new RuntimeException('That house number is already used in this purok.');
+                }
+            }
             $update = $pdo->prepare(
-                'UPDATE household_record SET address = :address, purok = :purok
+                'UPDATE household_record SET address = :address, purok = :purok,
+                    house_number = NULLIF(:house_number, \'\')
                  WHERE household_id = :household_id'
             );
-            $update->execute(['address' => $address, 'purok' => $purok, 'household_id' => $householdId]);
+            $update->execute([
+                'address' => $address,
+                'purok' => $purok,
+                'house_number' => $houseNumber,
+                'household_id' => $householdId,
+            ]);
             if ($update->rowCount() !== 1) {
                 throw new RuntimeException('The selected household could not be found.');
             }
-            staff_audit('HOUSEHOLD_UPDATED', 'household_record', $householdId, ['purok' => $purok]);
+            staff_audit('HOUSEHOLD_UPDATED', 'household_record', $householdId, ['purok' => $purok, 'house_number' => $houseNumber]);
             $message = 'Household details updated.';
         } elseif ($action === 'add_member') {
             $householdId = filter_var($_POST['household_id'] ?? '', FILTER_VALIDATE_INT);
@@ -229,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $search = trim((string) ($_GET['q'] ?? ''));
 $householdStatement = $pdo->prepare(
-    "SELECT h.household_id, h.address, h.purok, h.household_head_resident_id, h.created_at,
+    "SELECT h.household_id, h.address, h.purok, h.house_number, h.household_head_resident_id, h.created_at,
             COALESCE(
                 NULLIF(CONCAT_WS(' ', head.first_name, head.middle_name, head.last_name), ''),
                 NULLIF(CONCAT_WS(' ', head_member.first_name, head_member.middle_name, head_member.last_name), '')
@@ -241,8 +276,15 @@ $householdStatement = $pdo->prepare(
         ON head_member.household_id = h.household_id AND head_member.is_household_head
      LEFT JOIN household_member hm ON hm.household_id = h.household_id
      WHERE (:search = '' OR h.address ILIKE :address_search OR h.purok ILIKE :purok_search
+            OR COALESCE(h.house_number, '') ILIKE :house_number_search
             OR CONCAT_WS(' ', head.first_name, head.last_name) ILIKE :head_search
-            OR CONCAT_WS(' ', head_member.first_name, head_member.last_name) ILIKE :member_head_search)
+            OR CONCAT_WS(' ', head_member.first_name, head_member.last_name) ILIKE :member_head_search
+            OR EXISTS (
+                SELECT 1 FROM household_member search_member
+                WHERE search_member.household_id = h.household_id
+                  AND CONCAT_WS(' ', search_member.first_name, search_member.middle_name, search_member.last_name)
+                      ILIKE :resident_search
+            ))
      GROUP BY h.household_id, head.first_name, head.middle_name, head.last_name,
               head_member.first_name, head_member.middle_name, head_member.last_name
      ORDER BY h.purok, h.address, h.household_id"
@@ -252,8 +294,10 @@ $householdStatement->execute([
     'search' => $search,
     'address_search' => $pattern,
     'purok_search' => $pattern,
+    'house_number_search' => $pattern,
     'head_search' => $pattern,
     'member_head_search' => $pattern,
+    'resident_search' => $pattern,
 ]);
 $households = $householdStatement->fetchAll();
 $memberStatement = $pdo->prepare(
@@ -290,13 +334,14 @@ require __DIR__ . '/includes/header.php';
                     <form method="post" class="row g-3">
                         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>"><input type="hidden" name="action" value="create_household">
                         <div class="col-12"><label class="form-label" for="new-address">Household address</label><input class="form-control" id="new-address" name="address" required></div>
-                        <div class="col-12"><label class="form-label" for="new-purok">Purok</label><input class="form-control" id="new-purok" name="purok" required></div>
+                        <div class="col-md-6"><label class="form-label" for="new-purok">Purok</label><input class="form-control" id="new-purok" name="purok" required></div>
+                        <div class="col-md-6"><label class="form-label" for="new-house-number">House number (optional)</label><input class="form-control" id="new-house-number" name="house_number" maxlength="50" placeholder="e.g. 12-A"></div>
                         <div class="col-12"><button class="btn btn-primary" type="submit">Create household</button></div>
                     </form>
                 </section>
                 <section class="staff-panel p-4">
                     <h2 class="h5">Find households</h2>
-                    <form method="get" class="d-flex gap-2"><input class="form-control" name="q" value="<?= e($search) ?>" placeholder="Search address, purok, or household head"><button class="btn btn-primary" type="submit">Search</button><?php if ($search !== ''): ?><a class="btn btn-light" href="staff_households.php">Clear</a><?php endif; ?></form>
+                    <form method="get" class="d-flex gap-2"><input class="form-control" name="q" value="<?= e($search) ?>" placeholder="Search address, house number, purok, or residents"><button class="btn btn-primary" type="submit">Search</button><?php if ($search !== ''): ?><a class="btn btn-light" href="staff_households.php">Clear</a><?php endif; ?></form>
                     <p class="text-muted mt-3 mb-0"><?= count($households) ?> household<?= count($households) === 1 ? '' : 's' ?> found</p>
                 </section>
             </div>
@@ -305,11 +350,12 @@ require __DIR__ . '/includes/header.php';
                     <?php $memberStatement->execute(['household_id' => $household['household_id']]); $members = $memberStatement->fetchAll(); ?>
                     <section class="staff-panel p-4">
                         <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                            <div><p class="eyebrow mb-1">HOUSEHOLD #<?= (int) $household['household_id'] ?></p><h2 class="h5 mb-1"><?= e($household['address']) ?></h2><p class="text-muted mb-0"><?= e($household['purok']) ?> · <?= (int) $household['member_count'] ?> listed members · Head: <?= e((string) ($household['head_name'] ?: 'Not assigned')) ?> · Created <?= e((new DateTime((string) $household['created_at']))->format('M j, Y')) ?></p></div>
+                            <div><p class="eyebrow mb-1">HOUSEHOLD #<?= (int) $household['household_id'] ?><?= !empty($household['house_number']) ? ' · HOUSE ' . e($household['house_number']) : '' ?></p><h2 class="h5 mb-1"><?= e($household['address']) ?></h2><p class="text-muted mb-0"><?= e($household['purok']) ?> · <?= (int) $household['member_count'] ?> listed members · Head: <?= e((string) ($household['head_name'] ?: 'Not assigned')) ?> · Created <?= e((new DateTime((string) $household['created_at']))->format('M j, Y')) ?></p></div>
                             <form method="post" class="d-flex flex-wrap gap-2 align-items-center">
                                 <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>"><input type="hidden" name="action" value="update_household"><input type="hidden" name="household_id" value="<?= (int) $household['household_id'] ?>">
                                 <input class="form-control form-control-sm" name="address" value="<?= e($household['address']) ?>" aria-label="Household address" required>
                                 <input class="form-control form-control-sm" name="purok" value="<?= e($household['purok']) ?>" aria-label="Purok" required>
+                                <input class="form-control form-control-sm" name="house_number" value="<?= e((string) ($household['house_number'] ?? '')) ?>" aria-label="House number (optional)" maxlength="50" placeholder="House number">
                                 <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>
                             </form>
                         </div>

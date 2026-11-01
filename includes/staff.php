@@ -47,6 +47,15 @@ function require_bhw_or_admin(): void
     }
 }
 
+function require_general_staff_or_admin(): void
+{
+    require_staff();
+    if (($_SESSION['user']['role'] ?? '') === 'staff' && current_staff_role() === 'BHW') {
+        http_response_code(403);
+        exit('This module is available to General Staff and administrators only.');
+    }
+}
+
 function staff_start_time_log(int $userId): array
 {
     ensure_staff_tables();

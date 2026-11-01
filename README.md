@@ -126,8 +126,11 @@ service-specific data practices with its Data Protection Officer or legal
 adviser before relying on them as a final legal policy.
 
 Admins can assign newly created staff as General Staff or BHW. The Household
-Registry is available only to admins and BHW accounts. It records household
-address, purok, household head, and member roster details; BHWs can link
+Registry is available only to admins and BHW accounts. BHW accounts cannot
+access document, blotter, or appointment requests. The registry records
+household address, purok, an optional house number unique within its purok,
+household head, and member roster details; residents can be searched by name
+across household rosters. BHWs can link
 registered residents or add unregistered people. On successful resident account
 creation, the system links an unregistered roster entry only when the full name
 and birthdate match exactly one household member. Ambiguous matches are left

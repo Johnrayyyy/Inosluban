@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/staff.php';
 require_once __DIR__ . '/includes/document_pickup.php';
-require_staff();
+require_general_staff_or_admin();
 ensure_staff_tables();
 ensure_document_pickup_schema();
 header('Referrer-Policy: no-referrer');

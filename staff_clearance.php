@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/staff.php';
-require_staff();
+require_general_staff_or_admin();
 $requestId = filter_var($_GET['id'] ?? '', FILTER_VALIDATE_INT);
 $statement = db()->prepare(
     'SELECT dr.*, r.first_name, r.middle_name, r.last_name, r.complete_address, r.purok, r.resident_id

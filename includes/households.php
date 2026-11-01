@@ -2,6 +2,7 @@
 
 function ensure_household_schema(): void
 {
+    db()->exec('ALTER TABLE household_record ADD COLUMN IF NOT EXISTS house_number VARCHAR(50)');
     db()->exec(
         "CREATE TABLE IF NOT EXISTS household_member (
             member_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -18,6 +19,11 @@ function ensure_household_schema(): void
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         )"
+    );
+    db()->exec(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_household_record_purok_house_number
+         ON household_record (LOWER(BTRIM(purok)), LOWER(BTRIM(house_number)))
+         WHERE NULLIF(BTRIM(house_number), '') IS NOT NULL"
     );
     db()->exec('CREATE INDEX IF NOT EXISTS idx_household_member_household ON household_member (household_id)');
     db()->exec(
