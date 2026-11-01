@@ -2,6 +2,12 @@
 declare(strict_types=1);
 
 const APP_NAME = 'Barangay Inosluban';
+const INOSLUBAN_MAP_BOUNDS = [
+    'south' => 13.9681559,
+    'north' => 13.9881559,
+    'west' => 121.1577885,
+    'east' => 121.1777885,
+];
 
 function load_environment_file(string $path): void
 {

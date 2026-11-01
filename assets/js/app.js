@@ -231,8 +231,18 @@ if (passwordModal) {
 
 const blotterMapElement = document.querySelector('#blotter-map');
 if (blotterMapElement && typeof L !== 'undefined') {
-    const mapCenter = [13.9911, 121.1710];
-    const blotterMap = L.map(blotterMapElement).setView(mapCenter, 16);
+    const bounds = {
+        south: Number(blotterMapElement.dataset.south),
+        north: Number(blotterMapElement.dataset.north),
+        west: Number(blotterMapElement.dataset.west),
+        east: Number(blotterMapElement.dataset.east),
+    };
+    const mapBounds = L.latLngBounds([bounds.south, bounds.west], [bounds.north, bounds.east]);
+    const blotterMap = L.map(blotterMapElement, {
+        maxBounds: mapBounds,
+        maxBoundsViscosity: 1,
+        minZoom: 15,
+    }).setView([(bounds.south + bounds.north) / 2, (bounds.west + bounds.east) / 2], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19
@@ -242,26 +252,46 @@ if (blotterMapElement && typeof L !== 'undefined') {
     const latitudeInput = document.querySelector('#latitude');
     const longitudeInput = document.querySelector('#longitude');
     let marker;
+    let lastValidPosition;
     let geocodeRequest = 0;
+    const isInArea = (latitude, longitude) => latitude >= bounds.south
+        && latitude <= bounds.north
+        && longitude >= bounds.west
+        && longitude <= bounds.east;
 
     const setLocation = (latitude, longitude, shouldReverseGeocode = true) => {
+        if (!isInArea(Number(latitude), Number(longitude))) {
+            locationInput.setCustomValidity('Choose a location within Barangay Inosluban, Lipa City.');
+            locationInput.reportValidity();
+            return false;
+        }
+        locationInput.setCustomValidity('');
         if (!marker) {
             marker = L.marker([latitude, longitude], { draggable: true }).addTo(blotterMap);
             marker.on('dragend', async () => {
                 const position = marker.getLatLng();
+                if (!isInArea(position.lat, position.lng)) {
+                    marker.setLatLng(lastValidPosition);
+                    locationInput.setCustomValidity('Choose a location within Barangay Inosluban, Lipa City.');
+                    locationInput.reportValidity();
+                    return;
+                }
                 latitudeInput.value = position.lat.toFixed(7);
                 longitudeInput.value = position.lng.toFixed(7);
+                lastValidPosition = position;
                 await reverseGeocode(position.lat, position.lng);
             });
         } else {
             marker.setLatLng([latitude, longitude]);
         }
+        lastValidPosition = L.latLng(Number(latitude), Number(longitude));
         latitudeInput.value = Number(latitude).toFixed(7);
         longitudeInput.value = Number(longitude).toFixed(7);
         blotterMap.setView([latitude, longitude], Math.max(blotterMap.getZoom(), 16));
         if (shouldReverseGeocode) {
             reverseGeocode(latitude, longitude);
         }
+        return true;
     };
 
     const reverseGeocode = async (latitude, longitude) => {
@@ -299,7 +329,9 @@ if (blotterMapElement && typeof L !== 'undefined') {
             if (requestId !== geocodeRequest || !results[0]) {
                 return;
             }
-            setLocation(Number(results[0].lat), Number(results[0].lon), false);
+            if (!setLocation(Number(results[0].lat), Number(results[0].lon), false)) {
+                return;
+            }
             locationInput.value = results[0].display_name || query;
         } catch (error) {
             console.error('Unable to find the typed incident location.', error);
@@ -307,6 +339,16 @@ if (blotterMapElement && typeof L !== 'undefined') {
     };
 
     blotterMap.on('click', (event) => setLocation(event.latlng.lat, event.latlng.lng));
+    locationInput.addEventListener('input', () => {
+        locationInput.setCustomValidity('');
+        latitudeInput.value = '';
+        longitudeInput.value = '';
+        if (marker) {
+            marker.remove();
+            marker = null;
+            lastValidPosition = null;
+        }
+    });
     locationInput.addEventListener('change', geocodeLocation);
     locationInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
@@ -314,6 +356,28 @@ if (blotterMapElement && typeof L !== 'undefined') {
             geocodeLocation();
         }
     });
+}
+
+const staffBlotterMapElement = document.querySelector('#staff-blotter-map');
+if (staffBlotterMapElement && typeof L !== 'undefined') {
+    const bounds = {
+        south: Number(staffBlotterMapElement.dataset.south),
+        north: Number(staffBlotterMapElement.dataset.north),
+        west: Number(staffBlotterMapElement.dataset.west),
+        east: Number(staffBlotterMapElement.dataset.east),
+    };
+    const latitude = Number(staffBlotterMapElement.dataset.latitude);
+    const longitude = Number(staffBlotterMapElement.dataset.longitude);
+    const map = L.map(staffBlotterMapElement, {
+        maxBounds: L.latLngBounds([bounds.south, bounds.west], [bounds.north, bounds.east]),
+        maxBoundsViscosity: 1,
+        minZoom: 15,
+    }).setView([latitude, longitude], 17);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+    }).addTo(map);
+    L.marker([latitude, longitude]).addTo(map);
 }
 
 if (window.bootstrap && window.bootstrap.Modal) {

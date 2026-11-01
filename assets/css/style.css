@@ -600,6 +600,7 @@ body.hide-site-footer > .site-footer { display: none; }
 .map-card { min-width: 0; }
 .map-card h2 i { color: var(--red); }
 #blotter-map { width: 100%; max-width: 100%; height: 245px; margin-top: .8rem; border-radius: .55rem; overflow: hidden; border: 1px solid var(--request-border); z-index: 0; }
+.staff-blotter-map { width: 100%; height: 220px; margin: .65rem 0; border: 1px solid #dfe3e8; border-radius: .55rem; overflow: hidden; }
 .map-hint { display: block; margin-top: .45rem; color: var(--request-muted); font-size: .58rem; text-align: center; }
 .blotter-report-list { display: grid; gap: .45rem; max-height: 210px; overflow-y: auto; margin-top: .7rem; padding-right: .2rem; }
 .blotter-report { display: flex; align-items: center; gap: .55rem; padding: .55rem; border: 1px solid var(--request-border); border-radius: .55rem; color: var(--request-text); text-decoration: none; }
