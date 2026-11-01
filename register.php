@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/households.php';
 
 if (is_logged_in()) {
     header('Location: dashboard.php');
@@ -160,6 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($duplicate->fetch()) {
                 $errors[] = 'That username or email address is already registered.';
             } else {
+                ensure_household_schema();
                 $pdo->beginTransaction();
                 try {
                     $resident = $pdo->prepare(
@@ -209,15 +211,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'valid_id_file_path' => $values['valid_id_file_path'],
                         'profile_image_path' => $values['profile_image_path'],
                     ]);
+                    $residentId = (int) $resident->fetchColumn();
                     $account = $pdo->prepare(
                         'INSERT INTO user_account (resident_id, username, password_hash, account_status)
                          VALUES (:resident_id, :username, :password_hash, \'active\')'
                     );
                     $account->execute([
-                        'resident_id' => $resident->fetchColumn(),
+                        'resident_id' => $residentId,
                         'username' => $values['username'],
                         'password_hash' => $draft['password_hash'],
                     ]);
+                    link_registered_resident_to_household($pdo, $residentId);
                     $pdo->commit();
                     unset($_SESSION['registration']);
                     $_SESSION['success'] = 'Your account was created. You can now log in.';

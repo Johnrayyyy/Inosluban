@@ -142,7 +142,7 @@ if ($type === 'documents') {
          FROM document_request dr
          JOIN resident r ON r.resident_id = dr.resident_id
          WHERE {$statusCondition}
-         ORDER BY dr.request_date DESC
+         ORDER BY dr.request_date ASC, dr.request_id ASC
          LIMIT :page_size OFFSET :offset"
     );
     $statement->bindValue(':page_size', $pageSize, PDO::PARAM_INT);
@@ -150,11 +150,11 @@ if ($type === 'documents') {
     $statement->execute();
     $rows = $statement->fetchAll();
 } elseif ($type === 'blotter') {
-    $rows = db()->query("SELECT b.report_id AS record_id, b.category AS request_type, b.report_title AS purpose, b.report_date AS request_date, b.status, b.location, b.latitude, b.longitude, r.first_name, r.last_name, r.complete_address, r.residency_status, r.valid_id_file_path, r.resident_id FROM blotter b LEFT JOIN resident r ON r.resident_id = b.resident_id ORDER BY b.report_date DESC")->fetchAll();
+    $rows = db()->query("SELECT b.report_id AS record_id, b.category AS request_type, b.report_title AS purpose, b.report_date AS request_date, b.status, b.location, b.latitude, b.longitude, r.first_name, r.last_name, r.complete_address, r.residency_status, r.valid_id_file_path, r.resident_id FROM blotter b LEFT JOIN resident r ON r.resident_id = b.resident_id ORDER BY b.report_date ASC, b.report_id ASC")->fetchAll();
     $totalRows = count($rows);
     $totalPages = 1;
 } else {
-    $rows = db()->query("SELECT a.appointment_id AS record_id, a.service_type AS request_type, a.notes AS purpose, a.schedule AS request_date, a.status, r.first_name, r.last_name, r.complete_address, r.residency_status, r.valid_id_file_path, r.resident_id FROM appointment a JOIN resident r ON r.resident_id = a.resident_id ORDER BY a.schedule DESC")->fetchAll();
+    $rows = db()->query("SELECT a.appointment_id AS record_id, a.service_type AS request_type, a.notes AS purpose, a.schedule AS request_date, a.status, r.first_name, r.last_name, r.complete_address, r.residency_status, r.valid_id_file_path, r.resident_id FROM appointment a JOIN resident r ON r.resident_id = a.resident_id ORDER BY a.schedule ASC, a.appointment_id ASC")->fetchAll();
     $totalRows = count($rows);
     $totalPages = 1;
 }

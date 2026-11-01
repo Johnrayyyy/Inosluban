@@ -79,6 +79,24 @@ FOREIGN KEY (household_head_resident_id)
 REFERENCES resident(resident_id)
 ON DELETE SET NULL;
 
+CREATE TABLE household_member (
+    member_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    household_id INT NOT NULL REFERENCES household_record(household_id)
+        ON DELETE CASCADE,
+    resident_id INT UNIQUE REFERENCES resident(resident_id)
+        ON DELETE SET NULL,
+    first_name VARCHAR(100) NOT NULL,
+    middle_name VARCHAR(100),
+    last_name VARCHAR(100) NOT NULL,
+    birthdate DATE NOT NULL,
+    gender VARCHAR(30),
+    relationship_to_head VARCHAR(80) NOT NULL,
+    contact_number VARCHAR(20),
+    is_household_head BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 3. USER ACCOUNT
 CREATE TABLE user_account (
     user_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -123,6 +141,8 @@ CREATE TABLE staff (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     position VARCHAR(100),
+    staff_role VARCHAR(30) NOT NULL DEFAULT 'General Staff'
+        CHECK (staff_role IN ('General Staff', 'BHW')),
     employment_status VARCHAR(30) NOT NULL DEFAULT 'Active'
         CHECK (employment_status IN
             ('Active', 'Inactive', 'Resigned')),
@@ -266,6 +286,11 @@ CREATE TABLE announcement (
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     image_path TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    weather_forecast_date DATE,
+    weather_review_status VARCHAR(20)
+        CHECK (weather_review_status IS NULL OR weather_review_status IN ('Pending', 'Approved', 'Dismissed')),
+    weather_forecast_details JSONB,
     publication_date TIMESTAMPTZ,
     expires_at TIMESTAMPTZ,
 
@@ -436,6 +461,41 @@ CREATE TABLE weather_advisory (
         CHECK (status IN ('Pending', 'Approved', 'Dismissed'))
 );
 
+CREATE TABLE weather_snapshot (
+    snapshot_id SMALLINT PRIMARY KEY CHECK (snapshot_id = 1),
+    weather_data JSONB,
+    fetched_at TIMESTAMPTZ,
+    attempted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_error TEXT
+);
+
+CREATE TABLE weather_observation (
+    observation_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    observed_at TIMESTAMPTZ NOT NULL,
+    source_name VARCHAR(80) NOT NULL,
+    weather_summary TEXT NOT NULL,
+    weather_code INT,
+    temperature NUMERIC(6,2),
+    precipitation NUMERIC(8,2),
+    wind_speed NUMERIC(8,2),
+    cloud_cover SMALLINT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (observed_at, source_name)
+);
+
+CREATE TABLE weather_daily_history (
+    history_date DATE PRIMARY KEY,
+    location VARCHAR(255) NOT NULL,
+    readings_count INT NOT NULL,
+    weather_summary TEXT NOT NULL,
+    temperature_min NUMERIC(6,2),
+    temperature_max NUMERIC(6,2),
+    precipitation_total NUMERIC(10,2) NOT NULL DEFAULT 0,
+    wind_speed_max NUMERIC(8,2),
+    readings JSONB NOT NULL DEFAULT '[]'::JSONB,
+    archived_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- =========================================================
 -- 13. INDEXES FOR COMMON SEARCHES AND DASHBOARDS
 -- =========================================================
@@ -445,6 +505,13 @@ CREATE INDEX idx_resident_name
 
 CREATE INDEX idx_resident_household
     ON resident(household_id);
+
+CREATE INDEX idx_household_member_household
+    ON household_member(household_id);
+
+CREATE UNIQUE INDEX idx_household_member_single_head
+    ON household_member(household_id)
+    WHERE is_household_head;
 
 CREATE INDEX idx_resident_purok
     ON resident(purok);
@@ -469,6 +536,9 @@ CREATE INDEX idx_appointment_schedule_status
 
 CREATE INDEX idx_announcement_status
     ON announcement(status, publication_date);
+
+CREATE UNIQUE INDEX idx_announcement_weather_forecast_date
+    ON announcement(weather_forecast_date);
 
 CREATE INDEX idx_disaster_alert_created
     ON disaster_preparedness(created_at);

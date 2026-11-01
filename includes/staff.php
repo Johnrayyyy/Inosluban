@@ -3,6 +3,11 @@
 function ensure_staff_tables(): void
 {
     db()->exec(
+        "ALTER TABLE staff
+         ADD COLUMN IF NOT EXISTS staff_role VARCHAR(30) NOT NULL DEFAULT 'General Staff'
+         CHECK (staff_role IN ('General Staff', 'BHW'))"
+    );
+    db()->exec(
         "CREATE TABLE IF NOT EXISTS staff_time_log (
             time_log_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
             user_id INT NOT NULL REFERENCES user_account(user_id) ON DELETE CASCADE,
@@ -12,6 +17,34 @@ function ensure_staff_tables(): void
             CHECK (clock_out IS NULL OR clock_out >= clock_in)
         )"
     );
+}
+
+function current_staff_role(): ?string
+{
+    if (($_SESSION['user']['role'] ?? '') !== 'staff') {
+        return null;
+    }
+
+    ensure_staff_tables();
+    $statement = db()->prepare(
+        'SELECT staff_role FROM staff WHERE user_id = :user_id'
+    );
+    $statement->execute(['user_id' => (int) $_SESSION['user']['id']]);
+    $staffRole = $statement->fetchColumn();
+
+    return is_string($staffRole) ? $staffRole : null;
+}
+
+function require_bhw_or_admin(): void
+{
+    require_staff();
+    if (($_SESSION['user']['role'] ?? '') === 'admin') {
+        return;
+    }
+    if (current_staff_role() !== 'BHW') {
+        http_response_code(403);
+        exit('This module is available to BHW staff and administrators only.');
+    }
 }
 
 function staff_start_time_log(int $userId): array

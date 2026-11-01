@@ -90,6 +90,20 @@ It writes the current, hourly, and daily forecast payload to PostgreSQL; the
 dashboard displays the latest successful snapshot and reports refresh failures.
 After the cron job's first run, the dashboard updates automatically without
 anyone pressing a fetch button or being signed in.
+Add a second scheduled job at `5 16 * * *` UTC (12:05 AM Philippine time) with
+the command:
+
+```text
+php /var/www/html/weather_daily_cron.php
+```
+
+The daily job archives all weather observations collected during the previous
+Philippine calendar day, including temperature, rainfall, wind, cloud cover,
+condition summaries, and source timestamps. It is safe to rerun and updates
+that day's archive instead of creating duplicates. The admin weather dashboard
+shows the archived daily history. Forecast rain and thunderstorms create
+pending announcement drafts; only an admin can approve and publish or dismiss
+those drafts from Manage Announcements.
 The admin Dashboard route opens `admin_analytics.php`. The analytics page
 summarizes service, weather-advisory, alert, notification, and staff-time data.
 Hourly weather refreshes are also recorded as observations, with recent saved
@@ -101,6 +115,14 @@ The registration terms are a working draft based on Philippine privacy
 requirements. Confirm the barangay's privacy contact, retention schedule, and
 service-specific data practices with its Data Protection Officer or legal
 adviser before relying on them as a final legal policy.
+
+Admins can assign newly created staff as General Staff or BHW. The Household
+Registry is available only to admins and BHW accounts. It records household
+address, purok, household head, and member roster details; BHWs can link
+registered residents or add unregistered people. On successful resident account
+creation, the system links an unregistered roster entry only when the full name
+and birthdate match exactly one household member. Ambiguous matches are left
+unlinked for manual assignment.
 
 ## Folder guide
 

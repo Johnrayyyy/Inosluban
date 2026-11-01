@@ -12,6 +12,11 @@ function require_admin(): void
 function ensure_admin_schema(): void
 {
     db()->exec('ALTER TABLE announcement ADD COLUMN IF NOT EXISTS image_path TEXT');
+    db()->exec('ALTER TABLE announcement ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP');
+    db()->exec('ALTER TABLE announcement ADD COLUMN IF NOT EXISTS weather_forecast_date DATE');
+    db()->exec('ALTER TABLE announcement ADD COLUMN IF NOT EXISTS weather_review_status VARCHAR(20)');
+    db()->exec('ALTER TABLE announcement ADD COLUMN IF NOT EXISTS weather_forecast_details JSONB');
+    db()->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_announcement_weather_forecast_date ON announcement (weather_forecast_date)');
     db()->exec(
         "CREATE TABLE IF NOT EXISTS weather_advisory (
             advisory_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -51,6 +56,20 @@ function ensure_admin_schema(): void
             cloud_cover SMALLINT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
             UNIQUE (observed_at, source_name)
+        )"
+    );
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS weather_daily_history (
+            history_date DATE PRIMARY KEY,
+            location VARCHAR(255) NOT NULL,
+            readings_count INT NOT NULL,
+            weather_summary TEXT NOT NULL,
+            temperature_min NUMERIC(6,2),
+            temperature_max NUMERIC(6,2),
+            precipitation_total NUMERIC(10,2) NOT NULL DEFAULT 0,
+            wind_speed_max NUMERIC(8,2),
+            readings JSONB NOT NULL DEFAULT '[]'::JSONB,
+            archived_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
         )"
     );
     db()->exec(
@@ -110,6 +129,7 @@ function store_weather_snapshot(array $weather): void
             'wind_speed' => $weather['current']['wind_speed'] ?? null,
             'cloud_cover' => $weather['current']['cloud_cover'] ?? null,
         ]);
+        queue_weather_forecast_announcements($pdo, $weather);
         $pdo->commit();
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) {
@@ -117,6 +137,128 @@ function store_weather_snapshot(array $weather): void
         }
         throw $exception;
     }
+}
+
+function queue_weather_forecast_announcements(PDO $pdo, array $weather): void
+{
+    $rainCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99];
+    $insert = $pdo->prepare(
+        "INSERT INTO announcement (
+            created_by_user_id, title, message, publication_date, status,
+            weather_forecast_date, weather_review_status, weather_forecast_details
+         ) VALUES (
+            NULL, :title, :message, NULL, 'Draft',
+            CAST(:forecast_date AS DATE), 'Pending', CAST(:details AS JSONB)
+         )
+         ON CONFLICT (weather_forecast_date) DO UPDATE SET
+            title = EXCLUDED.title,
+            message = EXCLUDED.message,
+            weather_forecast_details = EXCLUDED.weather_forecast_details
+         WHERE announcement.status = 'Draft'
+           AND announcement.weather_review_status = 'Pending'"
+    );
+    foreach (($weather['forecast'] ?? []) as $day) {
+        $weatherCode = (int) ($day['weather_code'] ?? 0);
+        $rainfall = (float) ($day['rain_sum'] ?? 0);
+        if ($rainfall <= 0 && !in_array($weatherCode, $rainCodes, true)) {
+            continue;
+        }
+
+        $forecastDate = new DateTimeImmutable((string) ($day['date'] ?? ''), new DateTimeZone(WEATHER_TIMEZONE));
+        $dateLabel = $forecastDate->format('F j, Y');
+        $summary = (string) ($day['summary'] ?? weather_code_label($weatherCode));
+        $title = 'Weather advisory: ' . $summary . ' forecast for ' . $dateLabel;
+        $message = sprintf(
+            'A forecast for %s indicates %s with an estimated %.1f mm of rain. Please monitor official weather updates and take appropriate precautions. This notice is a forecast and should be reviewed before publication.',
+            $dateLabel,
+            strtolower($summary),
+            $rainfall
+        );
+        $details = json_encode($day, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+        $insert->execute([
+            'title' => $title,
+            'message' => $message,
+            'forecast_date' => $forecastDate->format('Y-m-d'),
+            'details' => $details,
+        ]);
+    }
+}
+
+function archive_daily_weather_history(?DateTimeImmutable $day = null): int
+{
+    ensure_admin_schema();
+    $timezone = new DateTimeZone(WEATHER_TIMEZONE);
+    $targetDay = ($day ?? new DateTimeImmutable('yesterday', $timezone))->setTimezone($timezone)->setTime(0, 0);
+    $start = $targetDay->format(DATE_ATOM);
+    $end = $targetDay->modify('+1 day')->format(DATE_ATOM);
+    $statement = db()->prepare(
+        "SELECT COUNT(*) AS readings_count,
+                MIN(temperature) AS temperature_min,
+                MAX(temperature) AS temperature_max,
+                COALESCE(SUM(precipitation), 0) AS precipitation_total,
+                MAX(wind_speed) AS wind_speed_max,
+                COALESCE(STRING_AGG(DISTINCT weather_summary, ', ' ORDER BY weather_summary), 'No weather observations captured') AS weather_summary,
+                COALESCE(
+                    JSONB_AGG(JSONB_BUILD_OBJECT(
+                        'observed_at', observed_at,
+                        'source_name', source_name,
+                        'weather_summary', weather_summary,
+                        'weather_code', weather_code,
+                        'temperature', temperature,
+                        'precipitation', precipitation,
+                        'wind_speed', wind_speed,
+                        'cloud_cover', cloud_cover
+                    ) ORDER BY observed_at),
+                    '[]'::JSONB
+                ) AS readings
+         FROM weather_observation
+         WHERE source_name <> 'Saved advisory'
+           AND observed_at >= CAST(:start_at AS TIMESTAMPTZ)
+           AND observed_at < CAST(:end_at AS TIMESTAMPTZ)"
+    );
+    $statement->execute(['start_at' => $start, 'end_at' => $end]);
+    $daily = $statement->fetch();
+    $readingsCount = (int) ($daily['readings_count'] ?? 0);
+    if ($readingsCount === 0) {
+        return 0;
+    }
+
+    $readings = is_string($daily['readings'])
+        ? $daily['readings']
+        : json_encode($daily['readings'], JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+    $save = db()->prepare(
+        "INSERT INTO weather_daily_history (
+            history_date, location, readings_count, weather_summary,
+            temperature_min, temperature_max, precipitation_total, wind_speed_max, readings
+         ) VALUES (
+            CAST(:history_date AS DATE), :location, :readings_count, :weather_summary,
+            :temperature_min, :temperature_max, :precipitation_total, :wind_speed_max,
+            CAST(:readings AS JSONB)
+         )
+         ON CONFLICT (history_date) DO UPDATE SET
+            location = EXCLUDED.location,
+            readings_count = EXCLUDED.readings_count,
+            weather_summary = EXCLUDED.weather_summary,
+            temperature_min = EXCLUDED.temperature_min,
+            temperature_max = EXCLUDED.temperature_max,
+            precipitation_total = EXCLUDED.precipitation_total,
+            wind_speed_max = EXCLUDED.wind_speed_max,
+            readings = EXCLUDED.readings,
+            archived_at = CURRENT_TIMESTAMP"
+    );
+    $save->execute([
+        'history_date' => $targetDay->format('Y-m-d'),
+        'location' => WEATHER_LOCATION,
+        'readings_count' => $readingsCount,
+        'weather_summary' => (string) $daily['weather_summary'],
+        'temperature_min' => $daily['temperature_min'],
+        'temperature_max' => $daily['temperature_max'],
+        'precipitation_total' => $daily['precipitation_total'],
+        'wind_speed_max' => $daily['wind_speed_max'],
+        'readings' => $readings,
+    ]);
+
+    return $readingsCount;
 }
 
 function record_weather_sync_failure(string $error): void

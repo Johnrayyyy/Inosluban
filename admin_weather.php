@@ -31,6 +31,13 @@ $current = is_array($weather) ? ($weather['current'] ?? []) : [];
 $hourly = is_array($weather) ? array_slice($weather['hourly'] ?? [], 0, 24) : [];
 $forecast = is_array($weather) ? ($weather['forecast'] ?? []) : [];
 $advisories = db()->query('SELECT * FROM weather_advisory ORDER BY created_at DESC LIMIT 20')->fetchAll();
+$dailyHistory = db()->query(
+    'SELECT history_date, location, readings_count, weather_summary, temperature_min,
+            temperature_max, precipitation_total, wind_speed_max, readings
+     FROM weather_daily_history
+     ORDER BY history_date DESC
+     LIMIT 30'
+)->fetchAll();
 
 $temperaturePoints = [];
 $chartHours = [];
@@ -183,6 +190,29 @@ require __DIR__ . '/includes/header.php';
                     </article>
                 <?php endforeach; ?>
                 <?php if ($advisories === []): ?><p class="weather-empty-state">No advisories have been submitted for review.</p><?php endif; ?>
+            </section>
+            <section class="weather-history-panel">
+                <div class="weather-history-heading"><div><h2>Daily weather history</h2><p>Daily archives are captured at midnight Philippine time from recorded observations.</p></div><i class="bi bi-clock-history"></i></div>
+                <?php foreach ($dailyHistory as $history): ?>
+                    <?php
+                    $readings = is_string($history['readings'])
+                        ? json_decode($history['readings'], true, 512, JSON_THROW_ON_ERROR)
+                        : $history['readings'];
+                    ?>
+                    <details class="weather-history-row">
+                        <summary class="weather-history-details">
+                            <strong><?= e((new DateTime((string) $history['history_date']))->format('F j, Y')) ?> · <?= e($history['location']) ?></strong>
+                            <span><?= e($history['weather_summary']) ?> · <?= (int) $history['readings_count'] ?> observations</span>
+                            <small><?= $history['temperature_min'] !== null ? e(number_format((float) $history['temperature_min'], 1) . '–' . number_format((float) $history['temperature_max'], 1) . ' °C') : 'Temperature unavailable' ?> · <?= e(number_format((float) $history['precipitation_total'], 1)) ?> mm rain · Peak wind <?= $history['wind_speed_max'] !== null ? e(number_format((float) $history['wind_speed_max'], 1) . ' km/h') : '—' ?></small>
+                        </summary>
+                        <div class="table-responsive mt-3"><table class="staff-table"><thead><tr><th>Recorded at</th><th>Source</th><th>Conditions</th><th>Temperature</th><th>Rain</th><th>Wind</th><th>Cloud cover</th></tr></thead><tbody>
+                            <?php foreach ($readings as $reading): ?>
+                                <tr><td><?= e((new DateTime((string) $reading['observed_at']))->setTimezone(new DateTimeZone(WEATHER_TIMEZONE))->format('g:i A')) ?></td><td><?= e((string) $reading['source_name']) ?></td><td><?= e((string) $reading['weather_summary']) ?></td><td><?= $reading['temperature'] !== null ? e((string) $reading['temperature']) . ' °C' : '—' ?></td><td><?= $reading['precipitation'] !== null ? e((string) $reading['precipitation']) . ' mm' : '—' ?></td><td><?= $reading['wind_speed'] !== null ? e((string) $reading['wind_speed']) . ' km/h' : '—' ?></td><td><?= $reading['cloud_cover'] !== null ? e((string) $reading['cloud_cover']) . '%' : '—' ?></td></tr>
+                            <?php endforeach; ?>
+                        </tbody></table></div>
+                    </details>
+                <?php endforeach; ?>
+                <?php if ($dailyHistory === []): ?><p class="weather-empty-state">Daily weather history will appear after the first midnight archive.</p><?php endif; ?>
             </section>
         </div>
     </section>
