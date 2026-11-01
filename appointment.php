@@ -169,6 +169,7 @@ try {
 }
 
 $pageTitle = 'Book an appointment';
+$hideSiteFooter = true;
 require __DIR__ . '/includes/header.php';
 ?>
 <main class="dashboard-page request-module appointment-module" data-theme="light">

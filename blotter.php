@@ -126,6 +126,7 @@ try {
 }
 
 $pageTitle = 'Blotter report';
+$hideSiteFooter = true;
 require __DIR__ . '/includes/header.php';
 ?>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">

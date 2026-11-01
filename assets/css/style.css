@@ -63,6 +63,7 @@ a:hover { color: var(--red-dark); text-decoration: underline; }
 .password-field .form-control { padding-right: 3rem; }
 .password-toggle { position: absolute; right: .5rem; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--muted); }
 .site-footer { min-height: 48px; display: flex; align-items: center; background: #fff; color: var(--muted); font-size: .75rem; }
+body.hide-site-footer > .site-footer { display: none; }
 .dashboard-page { min-height: calc(100vh - 48px); }
 .nav-logo { width: 38px; height: 38px; object-fit: contain; }
 .welcome-card { background: linear-gradient(120deg, var(--red), #b32b2b); color: white; padding: clamp(1.5rem, 5vw, 3.5rem); border-radius: 18px; }
