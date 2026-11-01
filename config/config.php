@@ -74,6 +74,8 @@ define('SMTP_USERNAME', getenv('SMTP_USERNAME') ?: '');
 define('SMTP_PASSWORD', getenv('SMTP_PASSWORD') ?: '');
 define('MAIL_FROM', getenv('MAIL_FROM') ?: SMTP_USERNAME);
 define('MAIL_FROM_NAME', getenv('MAIL_FROM_NAME') ?: APP_NAME);
+define('PHILSMS_API_KEY', getenv('PHILSMS_API_KEY') ?: '');
+define('PHILSMS_SENDER_ID', getenv('PHILSMS_SENDER_ID') ?: '');
 define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: '');
 define('GEMINI_MODEL', getenv('GEMINI_MODEL') ?: 'gemini-2.0-flash');
 

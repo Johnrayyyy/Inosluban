@@ -2,10 +2,12 @@
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/staff.php';
 require_once __DIR__ . '/includes/admin.php';
+require_once __DIR__ . '/includes/phil_sms.php';
 require_admin();
 ensure_admin_schema();
 $errors = [];
 $message = '';
+$smsWarning = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         verify_csrf_token($_POST['csrf_token'] ?? '');
@@ -36,15 +38,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($review->rowCount() !== 1) {
                 throw new RuntimeException('This forecast draft was already reviewed or is no longer available.');
             }
+            if ($approved) {
+                if (!phil_sms_is_configured()) {
+                    $smsWarning = 'Announcement published, but SMS was not sent. Configure PHILSMS_API_KEY and PHILSMS_SENDER_ID.';
+                } else {
+                    $forecast = db()->prepare(
+                        'SELECT weather_forecast_date, weather_forecast_details
+                         FROM announcement WHERE announcement_id = :announcement_id'
+                    );
+                    $forecast->execute(['announcement_id' => $announcementId]);
+                    $forecastDetails = $forecast->fetch();
+                    $weather = is_array($forecastDetails['weather_forecast_details'] ?? null)
+                        ? $forecastDetails['weather_forecast_details']
+                        : json_decode((string) ($forecastDetails['weather_forecast_details'] ?? ''), true);
+                    $forecastDate = (string) ($forecastDetails['weather_forecast_date'] ?? '');
+                    $summary = is_array($weather) ? (string) ($weather['summary'] ?? '') : '';
+                    $smsText = weather_announcement_sms_message($forecastDate, $summary);
+                    $recipients = db()->query(
+                        "SELECT mobile_number FROM resident
+                         WHERE residency_status = 'Active'
+                           AND NULLIF(BTRIM(mobile_number), '') IS NOT NULL"
+                    )->fetchAll(PDO::FETCH_COLUMN);
+                    $attemptedNumbers = [];
+                    $sentCount = 0;
+                    $failedCount = 0;
+                    $invalidCount = 0;
+                    foreach ($recipients as $recipient) {
+                        $normalized = phil_sms_normalize_number((string) $recipient);
+                        if ($normalized === null) {
+                            $invalidCount++;
+                            continue;
+                        }
+                        if (isset($attemptedNumbers[$normalized])) {
+                            continue;
+                        }
+                        $attemptedNumbers[$normalized] = true;
+                        if (send_phil_sms($normalized, $smsText)) {
+                            $sentCount++;
+                        } else {
+                            $failedCount++;
+                        }
+                    }
+                    if ($failedCount > 0 || $invalidCount > 0) {
+                        $smsWarning = sprintf(
+                            'Announcement published. SMS sent to %d number(s); %d failed and %d had invalid mobile numbers.',
+                            $sentCount,
+                            $failedCount,
+                            $invalidCount
+                        );
+                    } else {
+                        $message = sprintf(
+                            'Weather announcement approved and published; SMS sent to %d resident number(s).',
+                            $sentCount
+                        );
+                    }
+                }
+            }
             staff_audit(
                 $approved ? 'WEATHER_ANNOUNCEMENT_APPROVED' : 'WEATHER_ANNOUNCEMENT_DISMISSED',
                 'announcement',
                 $announcementId,
                 ['review_status' => $approved ? 'Approved' : 'Dismissed']
             );
-            $message = $approved
-                ? 'Weather announcement approved and published to residents.'
-                : 'Weather announcement dismissed.';
+            if (!$approved) {
+                $message = 'Weather announcement dismissed.';
+            } elseif ($message === '' && $smsWarning !== '') {
+                $message = 'Weather announcement approved and published to residents.';
+            }
         } else {
         $title = trim((string) ($_POST['title'] ?? ''));
         $body = trim((string) ($_POST['message'] ?? ''));
@@ -69,6 +129,9 @@ $pendingWeather = db()->query(
      WHERE weather_forecast_date IS NOT NULL AND weather_review_status = 'Pending' AND status = 'Draft'
      ORDER BY weather_forecast_date"
 )->fetchAll();
+if ($smsWarning !== '') {
+    $errors[] = $smsWarning;
+}
 $announcements = db()->query("SELECT announcement_id, title, status, publication_date, weather_review_status, weather_forecast_date FROM announcement ORDER BY COALESCE(publication_date, created_at) DESC LIMIT 30")->fetchAll();
 $pageTitle = 'Manage announcements';
 require __DIR__ . '/includes/header.php';

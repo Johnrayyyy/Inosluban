@@ -16,6 +16,7 @@ if ($config === null) {
 if ($type === 'documents') {
     require_once __DIR__ . '/includes/document_pickup.php';
     require_once __DIR__ . '/includes/document_pickup_email.php';
+    require_once __DIR__ . '/includes/phil_sms.php';
     require_once __DIR__ . '/config/mailer.php';
     ensure_document_pickup_schema();
 }
@@ -41,6 +42,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($type === 'documents' && $newStatus === 'Released') {
             throw new RuntimeException('Document requests can only be marked released after scanning the resident pickup QR code.');
         }
+        $previousStatus = null;
+        if ($type === 'documents') {
+            $previousStatusStatement = db()->prepare('SELECT status FROM document_request WHERE request_id = :request_id');
+            $previousStatusStatement->execute(['request_id' => $recordId]);
+            $previousStatus = $previousStatusStatement->fetchColumn();
+        }
         $set = $type === 'documents' ? 'status = :status, assigned_staff_id = :staff_id, remarks = NULLIF(:notes, \'\')'
             : ($type === 'blotter' ? 'status = :status, assigned_staff_id = :staff_id, resolution_notes = NULLIF(:notes, \'\'), date_resolved = CASE WHEN :resolved_status IN (\'Resolved\', \'Closed\') THEN CURRENT_TIMESTAMP ELSE date_resolved END'
             : 'status = :status, assigned_staff_id = :staff_id');
@@ -60,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($type === 'documents') {
             if ($newStatus === 'Completed') {
                 $pickupStatement = db()->prepare(
-                    'SELECT dr.document_type, dr.name, r.email
+                    'SELECT dr.document_type, dr.name, r.email, r.mobile_number
                      FROM document_request dr
                      JOIN resident r ON r.resident_id = dr.resident_id
                      WHERE dr.request_id = :request_id AND dr.status = :status'
@@ -68,10 +75,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pickupStatement->execute(['request_id' => $recordId, 'status' => $newStatus]);
                 $pickupDetails = $pickupStatement->fetch();
                 if ($pickupDetails) {
+                    $mobileNumber = trim((string) ($pickupDetails['mobile_number'] ?? ''));
+                    if ($mobileNumber !== '' && $previousStatus !== 'Completed') {
+                        if (send_phil_sms($mobileNumber, document_pickup_sms_message((string) $pickupDetails['document_type'], $recordId))) {
+                            $message = 'Request marked ready. A pickup text was sent to the resident.';
+                        } else {
+                            $mailWarning = 'Request marked ready, but the pickup text could not be sent. Check the PHILSMS setup and recipient number.';
+                        }
+                    }
                     $existingToken = db()->prepare('SELECT 1 FROM document_pickup_token WHERE request_id = :request_id');
                     $existingToken->execute(['request_id' => $recordId]);
                     if ($existingToken->fetchColumn()) {
-                        $message = 'Request is ready for pickup. The existing QR code remains valid.';
+                        if ($message === '') {
+                            $message = 'Request is ready for pickup. The existing QR code remains valid.';
+                        }
                     } else {
                         $pickup = create_document_pickup_token((int) $recordId);
                         $emailAddress = trim((string) ($pickupDetails['email'] ?? ''));
@@ -95,19 +112,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 ]]
                             );
                             if ($emailSent) {
-                                $message = 'Request marked ready. The pickup QR code was emailed to the resident.';
+                                if ($message === '') {
+                                    $message = 'Request marked ready. The pickup QR code was emailed to the resident.';
+                                }
                             } else {
                                 $removeFailedToken = db()->prepare('DELETE FROM document_pickup_token WHERE request_id = :request_id');
                                 $removeFailedToken->execute(['request_id' => $recordId]);
-                                $mailWarning = 'Request marked ready, but the QR email could not be sent. Check the email configuration and save this status again to resend.';
+                                $emailWarning = 'The pickup QR email could not be sent. Check the email configuration and save this status again to resend.';
+                                $mailWarning = $mailWarning === '' ? $emailWarning : $mailWarning . ' ' . $emailWarning;
                                 error_log('Document pickup QR email was not sent for request #' . (int) $recordId);
                             }
                         } else {
                             $removeToken = db()->prepare('DELETE FROM document_pickup_token WHERE request_id = :request_id');
                             $removeToken->execute(['request_id' => $recordId]);
-                            $mailWarning = 'Request marked ready, but the resident has no valid email address on file.';
+                            $emailWarning = 'The resident has no valid email address on file for the pickup QR code.';
+                            $mailWarning = $mailWarning === '' ? $emailWarning : $mailWarning . ' ' . $emailWarning;
                             error_log('Document pickup QR email skipped because no valid resident email exists for request #' . (int) $recordId);
                         }
+                    }
+                    if ($mobileNumber === '' && $previousStatus !== 'Completed') {
+                        $smsWarning = 'The resident has no mobile number on file for SMS.';
+                        $mailWarning = $mailWarning === '' ? $smsWarning : $mailWarning . ' ' . $smsWarning;
                     }
                 }
             } else {

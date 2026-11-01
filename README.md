@@ -44,6 +44,15 @@ the app automatically switches Brevo's configured port `587` to `2525`
 because Render blocks outbound SMTP on port `587`. Other SMTP providers keep
 using their configured port.
 
+SMS notifications use the PHILSMS API. Set `PHILSMS_API_KEY` to the API key
+from your PHILSMS dashboard and `PHILSMS_SENDER_ID` to your approved sender ID.
+When a document request is marked ready, the resident gets a short pickup text;
+when an admin approves a weather forecast announcement, one short text is sent
+to each active resident with a valid Philippine mobile number on file. The
+messages use plain ASCII and stay below 160 characters to minimize SMS credits.
+SMS is optional; notifications are skipped with a warning until both settings
+are configured.
+
 The login page's password recovery sends a one-time email link that expires
 after one hour. The default application URL is
 `https://inosluban.onrender.com`; set `APP_BASE_URL` to the deployed origin (or
