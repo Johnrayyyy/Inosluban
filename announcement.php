@@ -54,9 +54,9 @@ require __DIR__ . '/includes/header.php';
             <div class="announcement-layout">
                 <section class="announcement-detail-card">
                     <?php if ($announcement !== null): ?>
-                        <div class="announcement-detail-meta"><span class="announcement-badge">Official Announcement</span><span><i class="bi bi-calendar3"></i> <?= e((new DateTime($announcement['publication_date'] ?? 'now'))->format('M j, Y')) ?></span></div>
+                        <div class="announcement-detail-meta"><span class="announcement-badge">Official Announcement</span><span><i class="bi bi-calendar3"></i> <?= e(format_app_datetime($announcement['publication_date'], 'M j, Y')) ?></span></div>
                         <h2><?= e($announcement['title']) ?></h2>
-                        <p class="announcement-author"><i class="bi bi-geo-alt-fill"></i> Barangay Inosluban <span>•</span><i class="bi bi-clock"></i> <?= e((new DateTime($announcement['publication_date'] ?? 'now'))->format('g:i A')) ?></p>
+                        <p class="announcement-author"><i class="bi bi-geo-alt-fill"></i> Barangay Inosluban <span>•</span><i class="bi bi-clock"></i> <?= e(format_app_datetime($announcement['publication_date'], 'g:i A')) ?></p>
                         <div class="announcement-hero-image" role="img" aria-label="Barangay announcement"></div>
                         <div class="announcement-message"><?= nl2br(e($announcement['message'])) ?></div>
                         <div class="announcement-readonly-note"><i class="bi bi-lock-fill"></i><span><strong>Resident view only</strong><small>Announcements are published by authorized barangay staff. Residents can view them but cannot edit or delete their contents.</small></span></div>
@@ -65,7 +65,7 @@ require __DIR__ . '/includes/header.php';
                     <?php endif; ?>
                 </section>
                 <aside class="announcement-side">
-                    <section class="announcement-related-card"><div class="card-heading"><div><h2>Related Announcements</h2><p>Latest official updates</p></div></div><div class="announcement-related-list"><?php foreach (array_slice($announcements, 0, 5) as $item): ?><a class="<?= $announcement !== null && (int) $item['announcement_id'] === (int) $announcement['announcement_id'] ? 'selected' : '' ?>" href="announcement.php?id=<?= (int) $item['announcement_id'] ?>"><span class="announcement-dot"></span><span><strong><?= e($item['title']) ?></strong><small><?= e((new DateTime($item['publication_date'] ?? 'now'))->format('M j, Y · g:i A')) ?></small></span></a><?php endforeach; ?><?php if ($announcements === []): ?><p class="announcement-side-empty">No related announcements.</p><?php endif; ?></div></section>
+                    <section class="announcement-related-card"><div class="card-heading"><div><h2>Related Announcements</h2><p>Latest official updates</p></div></div><div class="announcement-related-list"><?php foreach (array_slice($announcements, 0, 5) as $item): ?><a class="<?= $announcement !== null && (int) $item['announcement_id'] === (int) $announcement['announcement_id'] ? 'selected' : '' ?>" href="announcement.php?id=<?= (int) $item['announcement_id'] ?>"><span class="announcement-dot"></span><span><strong><?= e($item['title']) ?></strong><small><?= e(format_app_datetime($item['publication_date'], 'M j, Y · g:i A')) ?></small></span></a><?php endforeach; ?><?php if ($announcements === []): ?><p class="announcement-side-empty">No related announcements.</p><?php endif; ?></div></section>
                     <section class="announcement-safety-card"><i class="bi bi-megaphone-fill"></i><h3>Stay informed</h3><p>Check this page regularly for important barangay notices, advisories, and community updates.</p></section>
                 </aside>
             </div>

@@ -48,6 +48,7 @@ function is_barangay_question(string $message): bool
         'address', 'emergency', 'disaster', 'ordinance', 'service', 'portal',
         'admin', 'resident', 'approve', 'approval', 'processing', 'hours',
         'contact', 'phone', 'landline', 'facebook', 'tanod', 'emergency',
+        'weather', 'rain', 'rainy', 'forecast', 'storm', 'thunder',
     ];
 
     foreach ($topics as $topic) {
@@ -57,6 +58,95 @@ function is_barangay_question(string $message): bool
     }
 
     return false;
+}
+
+function barangay_weather_context_from_snapshot(?array $snapshot): string
+{
+    $weather = $snapshot['weather'] ?? null;
+    if (!is_array($weather)) {
+        return 'Stored weather forecast: No forecast is currently available in the database. Do not guess future weather.';
+    }
+
+    $fetchedAt = $snapshot['fetched_at'] ?? null;
+    $freshness = 'refresh time unavailable';
+    if (is_string($fetchedAt) && $fetchedAt !== '') {
+        $fetchedDate = new DateTimeImmutable($fetchedAt);
+        $fetchedAt = $fetchedDate->setTimezone(new DateTimeZone(APP_TIMEZONE));
+        $freshness = 'last updated ' . $fetchedAt->format('M j, Y g:i A T');
+        if ($fetchedAt < new DateTimeImmutable('-24 hours', new DateTimeZone(APP_TIMEZONE))) {
+            $freshness .= ' (stale; treat as potentially outdated)';
+        }
+    }
+
+    $context = 'Stored weather forecast for ' . WEATHER_LOCATION . ', ' . $freshness
+        . '. The forecast is an estimate, not a guarantee. ';
+    $current = $weather['current'] ?? [];
+    if (is_array($current)) {
+        $context .= 'Current conditions: ' . (string) ($weather['summary'] ?? 'unavailable');
+        if (isset($weather['temperature'])) {
+            $context .= ', ' . number_format((float) $weather['temperature'], 1) . ' C';
+        }
+        $context .= '. ';
+    }
+
+    $forecastDays = $weather['forecast'] ?? [];
+    if (!is_array($forecastDays) || $forecastDays === []) {
+        return $context . 'No daily forecast entries are stored. Do not guess future weather.';
+    }
+
+    $timezone = new DateTimeZone(WEATHER_TIMEZONE);
+    $today = new DateTimeImmutable('today', $timezone);
+    $context .= 'Stored daily forecast: ';
+    $entries = [];
+    foreach (array_slice($forecastDays, 0, 7) as $day) {
+        if (!is_array($day) || empty($day['date'])) {
+            continue;
+        }
+        $date = new DateTimeImmutable((string) $day['date'], $timezone);
+        $label = $date->format('M j, Y');
+        if ($date->format('Y-m-d') === $today->format('Y-m-d')) {
+            $label = 'today (' . $label . ')';
+        } elseif ($date->format('Y-m-d') === $today->modify('+1 day')->format('Y-m-d')) {
+            $label = 'tomorrow (' . $label . ')';
+        } else {
+            $label = $date->format('l, M j');
+        }
+        $summary = (string) ($day['summary'] ?? 'conditions unavailable');
+        $rain = isset($day['rain_sum']) ? number_format((float) $day['rain_sum'], 1) . ' mm rain' : 'rain amount unavailable';
+        $temperature = '';
+        if (isset($day['temperature_min'], $day['temperature_max'])) {
+            $temperature = ', ' . number_format((float) $day['temperature_min'], 0)
+                . '-' . number_format((float) $day['temperature_max'], 0) . ' C';
+        }
+        $entries[] = $label . ': ' . $summary . ', ' . $rain . $temperature;
+    }
+
+    return $context . ($entries === [] ? 'No valid forecast entries are stored.' : implode('; ', $entries) . '.');
+}
+
+function barangay_weather_context(): string
+{
+    try {
+        $snapshot = db()->query(
+            'SELECT weather_data, fetched_at FROM weather_snapshot WHERE snapshot_id = 1'
+        )->fetch();
+    } catch (PDOException $exception) {
+        error_log('AI weather context database error: ' . $exception->getMessage());
+        return 'Stored weather forecast: The forecast database is currently unavailable. Do not guess future weather.';
+    }
+
+    if (!$snapshot) {
+        return barangay_weather_context_from_snapshot(null);
+    }
+
+    $weather = is_array($snapshot['weather_data'] ?? null)
+        ? $snapshot['weather_data']
+        : json_decode((string) ($snapshot['weather_data'] ?? ''), true);
+
+    return barangay_weather_context_from_snapshot([
+        'weather' => is_array($weather) ? $weather : null,
+        'fetched_at' => $snapshot['fetched_at'] ?? null,
+    ]);
 }
 
 function barangay_ai_context(bool $admin = false): string
@@ -108,6 +198,7 @@ function barangay_ai_context(bool $admin = false): string
     foreach ($knowledge as $record) {
         $context .= '[' . $record['category'] . '] ' . $record['question'] . ': ' . $record['answer'] . '. ';
     }
+    $context .= barangay_weather_context() . ' ';
     $announcements = db()->query(
         "SELECT title FROM announcement
          WHERE status = 'Published'

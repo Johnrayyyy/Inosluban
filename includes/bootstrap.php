@@ -35,6 +35,15 @@ function e(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function format_app_datetime(?string $value, string $format): string
+{
+    $dateTime = new DateTimeImmutable($value ?? 'now');
+
+    return $dateTime
+        ->setTimezone(new DateTimeZone(APP_TIMEZONE))
+        ->format($format);
+}
+
 function csrf_token(): string
 {
     if (empty($_SESSION['csrf_token'])) {
