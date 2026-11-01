@@ -19,6 +19,16 @@ if (!$isBhw) {
         'appointments' => (int) db()->query("SELECT COUNT(*) FROM appointment WHERE status = 'Pending'")->fetchColumn(),
     ];
 }
+$householdsByPurok = $isBhw
+    ? db()->query(
+        'SELECT h.purok, COUNT(DISTINCT h.household_id) AS household_count,
+                COUNT(hm.member_id) AS resident_count
+         FROM household_record h
+         LEFT JOIN household_member hm ON hm.household_id = h.household_id
+         GROUP BY h.purok
+         ORDER BY h.purok'
+    )->fetchAll()
+    : [];
 $pageTitle = 'Staff dashboard';
 require __DIR__ . '/includes/header.php';
 ?>
@@ -30,9 +40,21 @@ require __DIR__ . '/includes/header.php';
     <section class="dashboard-content">
         <header class="dashboard-topbar"><div class="dashboard-search"><i class="bi bi-search"></i><input type="search" placeholder="<?= $isBhw ? 'Search households...' : 'Search requests...' ?>" aria-label="<?= $isBhw ? 'Search households' : 'Search requests' ?>"></div><div class="dashboard-user"><i class="bi bi-bell-fill"></i><span class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e($_SESSION['user']['full_name']) ?></strong><small><?= $isBhw ? 'BHW' : e(ucfirst($_SESSION['user']['role'])) ?></small></span></div></header>
         <div class="staff-main">
-            <div class="staff-hero"><div><p class="eyebrow">STAFF PORTAL</p><h1>Good day, <?= e(explode(' ', trim($_SESSION['user']['full_name']))[0]) ?>!</h1><p><?= $isBhw ? 'Manage household records and resident rosters securely.' : 'Review and process resident requests securely.' ?></p></div><?php if ($isStaff && $timeLog): ?><?php $clockIn = new DateTimeImmutable((string) $timeLog['clock_in']); ?><div class="staff-timer"><small>TIME SHEET · TODAY'S WORK TIME</small><strong data-staff-timer data-clock-in="<?= e($clockIn->format('U')) ?>" data-server-now="<?= e((string) time()) ?>" data-day-start="<?= e($dayStart->format('U')) ?>">00:00:00</strong><span>Session started <?= e($clockIn->setTimezone(new DateTimeZone(APP_TIMEZONE))->format('M j, Y g:i A')) ?> Philippine Time</span></div><?php endif; ?></div>
+            <div class="staff-hero<?= $isBhw ? ' mb-4' : '' ?>"><div><p class="eyebrow"><?= $isBhw ? 'BHW PORTAL' : 'STAFF PORTAL' ?></p><h1>Good day, <?= e(explode(' ', trim($_SESSION['user']['full_name']))[0]) ?>!</h1><p><?= $isBhw ? 'Manage household records and resident rosters securely.' : 'Review and process resident requests securely.' ?></p></div><?php if ($isStaff && $timeLog): ?><?php $clockIn = new DateTimeImmutable((string) $timeLog['clock_in']); ?><div class="staff-timer"><small>TIME SHEET · TODAY'S WORK TIME</small><strong data-staff-timer data-clock-in="<?= e($clockIn->format('U')) ?>" data-server-now="<?= e((string) time()) ?>" data-day-start="<?= e($dayStart->format('U')) ?>">00:00:00</strong><span>Session started <?= e($clockIn->setTimezone(new DateTimeZone(APP_TIMEZONE))->format('M j, Y g:i A')) ?> Philippine Time</span></div><?php endif; ?></div>
             <?php if ($isBhw): ?>
-            <section class="staff-panel"><div class="staff-panel-heading"><div><p class="eyebrow">HOUSEHOLD SERVICES</p><h2>BHW workspace</h2></div></div><p>Manage households and resident rosters from the Household Registry.</p><a class="btn btn-primary" href="staff_households.php"><i class="bi bi-houses"></i> Open Household Registry</a></section>
+            <section class="staff-panel mb-4">
+                <div class="staff-panel-heading"><div><p class="eyebrow">HOUSEHOLD OVERVIEW</p><h2>Households by Purok</h2></div><span><?= count($householdsByPurok) ?> purok<?= count($householdsByPurok) === 1 ? '' : 's' ?></span></div>
+                <?php if ($householdsByPurok === []): ?>
+                    <p class="p-4 mb-0 text-muted">No households have been added to the registry yet.</p>
+                <?php else: ?>
+                    <div class="table-responsive"><table class="staff-table"><thead><tr><th>Purok</th><th>Households</th><th>Listed residents</th><th></th></tr></thead><tbody>
+                        <?php foreach ($householdsByPurok as $purok): ?>
+                            <tr><td><?= e($purok['purok']) ?></td><td><?= (int) $purok['household_count'] ?></td><td><?= (int) $purok['resident_count'] ?></td><td><a class="btn btn-sm btn-outline-primary" href="staff_households.php?q=<?= rawurlencode((string) $purok['purok']) ?>">View households</a></td></tr>
+                        <?php endforeach; ?>
+                    </tbody></table></div>
+                <?php endif; ?>
+            </section>
+            <section class="staff-panel"><div class="staff-panel-heading"><div><p class="eyebrow">WORKPLACE QUICK ACTION</p><h2>BHW workspace</h2></div></div><p class="p-3 mb-0">Manage household records and resident rosters securely.</p><div class="px-3 pb-3"><a class="btn btn-primary" href="staff_households.php"><i class="bi bi-houses"></i> Open Household Registry</a></div></section>
             <?php else: ?>
             <div class="staff-stat-grid">
                 <a class="staff-stat-card" href="staff_requests.php?type=documents"><i class="bi bi-file-earmark-text"></i><span>Document requests<strong><?= $counts['documents'] ?></strong></span></a>
