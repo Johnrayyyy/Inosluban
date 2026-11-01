@@ -12,7 +12,6 @@ $staffCounts = [
 <nav class="dashboard-nav staff-nav" aria-label="Staff portal navigation">
     <a class="<?= $staffModule === $dashboardUrl ? 'active' : '' ?>" href="<?= e($dashboardUrl) ?>"><i class="bi bi-house-fill"></i>Dashboard</a>
     <a class="<?= ($_GET['type'] ?? '') === 'documents' ? 'active' : '' ?>" href="staff_requests.php?type=documents"><i class="bi bi-file-earmark-text"></i>Document Requests<?php if ($staffCounts['document_request.php'] > 0): ?><b class="staff-nav-badge"><?= $staffCounts['document_request.php'] ?></b><?php endif; ?></a>
-    <a class="<?= $staffModule === 'staff_document_templates.php' ? 'active' : '' ?>" href="staff_document_templates.php"><i class="bi bi-printer"></i>Document Templates</a>
     <a class="<?= ($_GET['type'] ?? '') === 'blotter' ? 'active' : '' ?>" href="staff_requests.php?type=blotter"><i class="bi bi-shield-check"></i>Blotter<?php if ($staffCounts['blotter.php'] > 0): ?><b class="staff-nav-badge"><?= $staffCounts['blotter.php'] ?></b><?php endif; ?></a>
     <a class="<?= ($_GET['type'] ?? '') === 'appointments' ? 'active' : '' ?>" href="staff_requests.php?type=appointments"><i class="bi bi-calendar3"></i>Appointments<?php if ($staffCounts['appointment.php'] > 0): ?><b class="staff-nav-badge"><?= $staffCounts['appointment.php'] ?></b><?php endif; ?></a>
     <span class="dashboard-nav-label">MORE</span>

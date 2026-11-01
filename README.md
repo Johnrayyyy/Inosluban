@@ -108,7 +108,7 @@ adviser before relying on them as a final legal policy.
 - `register.php` — registration page and validation.
 - `dashboard.php` — the first page shown after login.
 - `admin_analytics.php` — aggregate admin dashboard and AI outlook.
-- `staff_document_templates.php` — staff-only editing and printing from original document PDFs.
+- `staff_document_templates.php` — staff-only field editing and PDF generation, opened from document request details; request-list View opens the populated PDF in a new tab.
 - `logout.php` — safely ends the session.
 - `config/` — application settings.
 - `includes/bootstrap.php` — starts sessions, connects to SQLite, and contains shared security helpers.

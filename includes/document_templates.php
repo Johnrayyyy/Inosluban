@@ -49,12 +49,13 @@ function document_template_text(Fpdi $pdf, float $x, float $baseline, float $wid
     $pdf->Text($x, $baseline, $value);
 }
 
-function document_template_issue_date(Fpdi $pdf, float $baseline, string $date, float $yearX = 137): void
+function document_template_issue_date(Fpdi $pdf, float $baseline, string $date, float $monthX = 84): void
 {
     $issueDate = new DateTimeImmutable($date);
-    document_template_text($pdf, 59, $baseline, 14, $issueDate->format('j'), 8);
-    document_template_text($pdf, 92, $baseline, 35, $issueDate->format('F'), 8);
-    document_template_text($pdf, $yearX, $baseline, 22, $issueDate->format('Y'), 8);
+    $textBaseline = $baseline - 0.5;
+    document_template_text($pdf, 59, $textBaseline, 14, $issueDate->format('j'), 8);
+    document_template_text($pdf, $monthX, $textBaseline, 35, $issueDate->format('F'), 8);
+    document_template_text($pdf, 121, $textBaseline, 22, $issueDate->format('Y'), 8);
 }
 
 function staff_generate_document_template_pdf(array $request, array $fields): string
@@ -74,31 +75,30 @@ function staff_generate_document_template_pdf(array $request, array $fields): st
     $pdf->useTemplate($templatePage);
     $pdf->SetTextColor(25, 25, 25);
     $baseline = static fn (float $fromTop): float => $fromTop;
-    $fields['birthday'] = (new DateTimeImmutable($fields['birthday']))->format('F j, Y');
-
     if ($request['document_type'] === 'Barangay Clearance') {
-        document_template_text($pdf, 77, $baseline(118), 73, $fields['name']);
-        document_template_text($pdf, 153, $baseline(118), 24, (string) $fields['age']);
-        document_template_text($pdf, 50, $baseline(126), 38, $fields['civil_status'], 8);
-        document_template_text($pdf, 119, $baseline(126), 42, $fields['birthday'], 8);
-        document_template_text($pdf, 28, $baseline(139), 155, $fields['purok_address'], 8);
-        document_template_text($pdf, 72, $baseline(165), 94, $fields['purpose'], 8);
-        document_template_issue_date($pdf, $baseline(182), $fields['issue_date']);
+        $fields['birthday'] = (new DateTimeImmutable($fields['birthday']))->format('F j, Y');
+        document_template_text($pdf, 77, $baseline(117), 73, $fields['name']);
+        document_template_text($pdf, 153, $baseline(117), 24, (string) $fields['age']);
+        document_template_text($pdf, 50, $baseline(125), 38, $fields['civil_status'], 8);
+        document_template_text($pdf, 119, $baseline(125), 42, $fields['birthday'], 8);
+        document_template_text($pdf, 28, $baseline(136), 155, $fields['purok_address'], 8);
+        document_template_text($pdf, 72, $baseline(163), 94, $fields['purpose'], 8);
+        document_template_issue_date($pdf, $baseline(182), $fields['issue_date'], 90);
     } elseif ($request['document_type'] === 'Certificate of Indigency') {
-        document_template_text($pdf, 78, $baseline(102), 72, $fields['name']);
-        document_template_text($pdf, 153, $baseline(102), 24, (string) $fields['age']);
-        document_template_text($pdf, 47, $baseline(114), 138, $fields['purok_address'], 8);
-        document_template_text($pdf, 30, $baseline(179), 155, 'Birthdate: ' . $fields['birthday'] . '    Civil status: ' . $fields['civil_status'], 7);
-        document_template_text($pdf, 43, $baseline(163), 137, $fields['purpose'], 8);
-        document_template_issue_date($pdf, $baseline(171), $fields['issue_date'], 127);
+        document_template_text($pdf, 78, $baseline(100.5), 72, $fields['name']);
+        document_template_text($pdf, 153, $baseline(100.5), 24, (string) $fields['age']);
+        document_template_text($pdf, 47, $baseline(112.5), 138, $fields['purok_address'], 8);
+        document_template_text($pdf, 127, $baseline(151), 55, $fields['name'], 8);
+        document_template_text($pdf, 43, $baseline(161.5), 137, $fields['purpose'], 8);
+        document_template_issue_date($pdf, $baseline(171), $fields['issue_date']);
     } else {
-        document_template_text($pdf, 78, $baseline(120), 74, $fields['name']);
-        document_template_text($pdf, 151, $baseline(120), 24, (string) $fields['age']);
-        document_template_text($pdf, 50, $baseline(128), 38, $fields['civil_status'], 8);
-        document_template_text($pdf, 118, $baseline(128), 47, $fields['birthday'], 8);
-        document_template_text($pdf, 28, $baseline(151), 155, $fields['purok_address'], 8);
-        document_template_text($pdf, 28, $baseline(177), 155, 'Purpose: ' . $fields['purpose'], 8);
-        document_template_issue_date($pdf, $baseline(182), $fields['issue_date']);
+        $fields['birthday'] = (new DateTimeImmutable($fields['birthday']))->format('F j, Y');
+        document_template_text($pdf, 78, $baseline(116.5), 74, $fields['name']);
+        document_template_text($pdf, 151, $baseline(116.5), 24, (string) $fields['age']);
+        document_template_text($pdf, 50, $baseline(124.5), 38, $fields['civil_status'], 8);
+        document_template_text($pdf, 118, $baseline(124.5), 47, $fields['birthday'], 8);
+        document_template_text($pdf, 28, $baseline(148.5), 155, $fields['purok_address'], 8);
+        document_template_issue_date($pdf, $baseline(182), $fields['issue_date'], 90);
     }
 
     return $pdf->Output('S');
