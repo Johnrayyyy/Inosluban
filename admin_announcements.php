@@ -55,25 +55,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $summary = is_array($weather) ? (string) ($weather['summary'] ?? '') : '';
                     $smsText = weather_announcement_sms_message($forecastDate, $summary);
                     $recipients = db()->query(
-                        "SELECT mobile_number FROM resident
+                        "SELECT resident_id, mobile_number FROM resident
                          WHERE residency_status = 'Active'
                            AND NULLIF(BTRIM(mobile_number), '') IS NOT NULL"
-                    )->fetchAll(PDO::FETCH_COLUMN);
+                    )->fetchAll();
+                    $insertDelivery = db()->prepare(
+                        "INSERT INTO notification_log
+                            (resident_id, announcement_id, recipient, channel, message, delivery_status, sent_at)
+                         VALUES
+                            (:resident_id, :announcement_id, :recipient, 'SMS', :message, :delivery_status,
+                             CASE WHEN :sent_status = 'Sent' THEN CURRENT_TIMESTAMP ELSE NULL END)"
+                    );
                     $attemptedNumbers = [];
                     $sentCount = 0;
                     $failedCount = 0;
                     $invalidCount = 0;
                     foreach ($recipients as $recipient) {
-                        $normalized = phil_sms_normalize_number((string) $recipient);
+                        $rawNumber = (string) $recipient['mobile_number'];
+                        $normalized = phil_sms_normalize_number($rawNumber);
                         if ($normalized === null) {
                             $invalidCount++;
+                            $insertDelivery->execute([
+                                'resident_id' => (int) $recipient['resident_id'],
+                                'announcement_id' => $announcementId,
+                                'recipient' => $rawNumber,
+                                'message' => $smsText,
+                                'delivery_status' => 'Failed',
+                                'sent_status' => 'Failed',
+                            ]);
                             continue;
                         }
                         if (isset($attemptedNumbers[$normalized])) {
                             continue;
                         }
                         $attemptedNumbers[$normalized] = true;
-                        if (send_phil_sms($normalized, $smsText)) {
+                        $sent = send_phil_sms($normalized, $smsText);
+                        $deliveryStatus = $sent ? 'Sent' : 'Failed';
+                        $insertDelivery->execute([
+                            'resident_id' => (int) $recipient['resident_id'],
+                            'announcement_id' => $announcementId,
+                            'recipient' => $normalized,
+                            'message' => $smsText,
+                            'delivery_status' => $deliveryStatus,
+                            'sent_status' => $deliveryStatus,
+                        ]);
+                        if ($sent) {
                             $sentCount++;
                         } else {
                             $failedCount++;

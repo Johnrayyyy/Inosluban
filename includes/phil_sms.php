@@ -111,3 +111,16 @@ function weather_announcement_sms_message(string $forecastDate, string $summary)
 
     return 'Inosluban weather advisory, ' . $dateLabel . ': ' . $summary . '. Stay alert; follow official updates.';
 }
+
+function disaster_alert_sms_message(string $severity, string $alertType, string $affectedArea, string $message): string
+{
+    $severity = phil_sms_clean_text($severity, 18);
+    $alertType = phil_sms_clean_text($alertType, 32);
+    $affectedArea = phil_sms_clean_text($affectedArea, 32);
+    $areaText = $affectedArea === '' ? '' : ' in ' . $affectedArea;
+    $prefix = 'Inosluban ' . $severity . ' alert: ' . $alertType . $areaText . '.';
+    $suffix = ' Follow official updates.';
+    $message = phil_sms_clean_text($message, max(0, 160 - strlen($prefix) - strlen($suffix) - 1));
+
+    return $prefix . ($message === '' ? '' : ' ' . $message) . $suffix;
+}

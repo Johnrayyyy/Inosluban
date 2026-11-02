@@ -50,7 +50,9 @@ When a document request is marked ready, the resident gets a short pickup text;
 when an admin approves a weather forecast announcement, one short text is sent
 to each active resident with a valid Philippine mobile number on file. The
 messages use plain ASCII and stay below 160 characters to minimize SMS credits.
-SMS is optional; notifications are skipped with a warning until both settings
+Admins can also publish disaster-preparedness alerts from the analytics
+dashboard and send them to active residents. Each SMS attempt is recorded for
+delivery review. SMS is optional; sending is unavailable until both settings
 are configured.
 
 The login page's password recovery sends a one-time email link that expires

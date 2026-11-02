@@ -90,6 +90,22 @@ function admin_analytics_data(): array
          GROUP BY severity
          ORDER BY item_count DESC, severity"
     )->fetchAll();
+    $activeDisasterAlerts = $pdo->query(
+        "SELECT d.disaster_id, d.alert_type, d.severity, d.affected_area, d.alert_message,
+                d.created_at, d.expires_at,
+                COUNT(n.notification_id) FILTER (
+                    WHERE n.delivery_status IN ('Sent', 'Delivered')
+                ) AS delivered_count,
+                COUNT(n.notification_id) FILTER (
+                    WHERE n.delivery_status = 'Failed'
+                ) AS failed_count
+         FROM disaster_preparedness d
+         LEFT JOIN notification_log n ON n.disaster_id = d.disaster_id
+         WHERE d.expires_at IS NULL OR d.expires_at >= CURRENT_TIMESTAMP
+         GROUP BY d.disaster_id
+         ORDER BY d.created_at DESC
+         LIMIT 5"
+    )->fetchAll();
     $weatherHistory = $pdo->query(
         "SELECT DATE_TRUNC('day', observed_at)::DATE AS weather_date,
                 ROUND(AVG(temperature)::NUMERIC, 1) AS average_temperature,
@@ -195,6 +211,20 @@ function admin_analytics_data(): array
         'disaster_severity' => array_map(
             static fn (array $row): array => ['label' => (string) $row['severity'], 'count' => (int) $row['item_count']],
             $disasterSeverity
+        ),
+        'active_disaster_alerts' => array_map(
+            static fn (array $row): array => [
+                'id' => (int) $row['disaster_id'],
+                'type' => (string) $row['alert_type'],
+                'severity' => (string) ($row['severity'] ?? 'Unspecified'),
+                'area' => (string) ($row['affected_area'] ?? ''),
+                'message' => (string) $row['alert_message'],
+                'created_at' => (string) $row['created_at'],
+                'expires_at' => $row['expires_at'] === null ? null : (string) $row['expires_at'],
+                'delivered' => (int) $row['delivered_count'],
+                'failed' => (int) $row['failed_count'],
+            ],
+            $activeDisasterAlerts
         ),
         'weather_history' => array_map(
             static fn (array $row): array => [
