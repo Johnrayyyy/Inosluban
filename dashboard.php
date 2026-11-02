@@ -19,6 +19,11 @@ try {
     );
     $latestAnnouncements = $announcementsStatement->fetchAll();
     $residentNotifications = resident_notifications((int) $_SESSION['user']['resident_id']);
+    $quickStats = db()->query(
+        'SELECT
+            (SELECT COUNT(*) FROM resident) AS total_residents,
+            (SELECT COUNT(*) FROM household_record) AS total_households'
+    )->fetch();
 } catch (PDOException $exception) {
     error_log('Dashboard announcements database error: ' . $exception->getMessage());
     http_response_code(500);
@@ -84,10 +89,10 @@ require __DIR__ . '/includes/header.php';
             <div class="dashboard-lower-grid">
                 <section class="dashboard-panel announcements-panel" id="announcements"><div class="dashboard-panel-heading"><h2><i class="bi bi-megaphone"></i> Latest Announcements</h2><a href="announcement.php">View All <i class="bi bi-arrow-right"></i></a></div><?php foreach ($latestAnnouncements as $announcement): ?><a class="announcement-item" href="announcement.php?id=<?= (int) $announcement['announcement_id'] ?>"><i class="bi bi-megaphone"></i><span><strong><?= e($announcement['title']) ?></strong><small><?= e(format_app_datetime($announcement['publication_date'], 'M j, Y')) ?></small></span><i class="bi bi-chevron-right"></i></a><?php endforeach; ?><?php if ($latestAnnouncements === []): ?><p class="announcement-dashboard-empty">No published announcements at this time.</p><?php endif; ?></section>
                 <section class="dashboard-panel quick-panel"><div class="dashboard-panel-heading"><h2><i class="bi bi-grid"></i> Quick Access</h2></div><div class="quick-grid"><a href="document_request.php"><i class="bi bi-file-earmark-text"></i>Request Document</a><a href="blotter.php"><i class="bi bi-shield-check"></i>Blotter</a><a href="appointment.php"><i class="bi bi-calendar3"></i>Appointment</a><a href="announcement.php"><i class="bi bi-megaphone"></i>Announcements</a></div></section>
-                <section class="dashboard-panel portal-panel"><img src="assets/images/logo.png" alt="Barangay Inosluban logo"><strong>BARANGAY INOSLUBAN</strong><small>LIPA CITY, BATANGAS</small><p>“Bayanihan, disiplina, para sa isang mas maunlad na Inosluban.”</p><h3>Quick Stats</h3><span><i class="bi bi-people-fill"></i>Total Residents <b>8,666</b></span><span><i class="bi bi-house-fill"></i>Total Households <b>2,114</b></span></section>
+                <section class="dashboard-panel portal-panel"><img src="assets/images/logo.png" alt="Barangay Inosluban logo"><strong>BARANGAY INOSLUBAN</strong><small>LIPA CITY, BATANGAS</small><p>“Bayanihan, disiplina, para sa isang mas maunlad na Inosluban.”</p><h3>Quick Stats</h3><span><i class="bi bi-people-fill"></i>Total Residents <b><?= number_format((int) $quickStats['total_residents']) ?></b></span><span><i class="bi bi-house-fill"></i>Total Households <b><?= number_format((int) $quickStats['total_households']) ?></b></span></section>
             </div>
         </div>
-        <footer class="dashboard-footer"><span><i class="bi bi-gear"></i></span><b></b><span>Connect. Collaborate. Grow Together.</span><span class="dashboard-footer-social"><i class="bi bi-facebook"></i><i class="bi bi-youtube"></i><i class="bi bi-instagram"></i></span><small>© 2026 Barangay Inosluban. All rights reserved.</small></footer>
+        <footer class="dashboard-footer"><span>Connect. Collaborate. Grow Together.</span><a class="dashboard-footer-contact" href="contact.php">Contact Office</a><span class="dashboard-footer-social"><a href="https://www.facebook.com/p/Brgy-Inosluban-61553651555583/" target="_blank" rel="noopener noreferrer" aria-label="Barangay Inosluban on Facebook"><i class="bi bi-facebook"></i></a><a href="mailto:inosluban2014@gmail.com" aria-label="Email Barangay Inosluban"><i class="bi bi-envelope-fill"></i></a></span><small>© <?= date('Y') ?> Barangay Inosluban. All rights reserved.</small></footer>
     </div>
 </main>
 <?php require __DIR__ . '/includes/footer.php'; ?>

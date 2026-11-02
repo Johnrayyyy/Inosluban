@@ -288,11 +288,34 @@ body.hide-site-footer > .site-footer { display: none; }
 .portal-panel span i { margin-right: .25rem; color: white; }
 .portal-panel span b { color: white; }
 .dashboard-footer { display: flex; align-items: center; justify-content: center; gap: .8rem; min-height: 68px; padding: .8rem 1.5rem; border-top: 1px solid rgba(255,255,255,.16); background: rgba(8, 7, 10, .72); color: rgba(255,255,255,.7); font-size: .62rem; }
-.dashboard-footer > span:first-child { color: white; font-size: .85rem; }
+.dashboard-footer > span:first-child { color: white; font-size: .68rem; }
 .dashboard-footer > b { width: 1px; height: 15px; background: rgba(255,255,255,.35); }
+.dashboard-footer-contact, .dashboard-footer-social a { color: white; }
+.dashboard-footer-contact { padding: .35rem .55rem; border: 1px solid rgba(255,255,255,.28); border-radius: .4rem; font-size: .6rem; }
+.dashboard-footer-contact:hover, .dashboard-footer-social a:hover { color: #ffd978; }
 .dashboard-footer-social { display: flex; gap: .75rem; margin-left: auto; color: white; }
+.dashboard-footer-social a { font-size: .9rem; }
 .dashboard-footer small { font-size: .52rem; }
 .dashboard-main + .dashboard-footer { margin-top: auto; }
+.resident-contact-main { max-width: 1000px; }
+.resident-contact-heading { margin: .35rem 0 1.2rem; }
+.resident-contact-heading h1 { margin: 0; color: white; font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 800; }
+.resident-contact-heading > p:last-child { margin: .45rem 0 0; color: rgba(255,255,255,.72); font-size: .78rem; }
+.resident-contact-heading .eyebrow { color: #ffd978; }
+.resident-contact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+.resident-contact-card { display: grid; grid-template-columns: 2.7rem minmax(0, 1fr) auto; align-items: center; gap: .8rem; min-height: 125px; padding: 1rem; border: 1px solid rgba(255,255,255,.25); border-radius: .85rem; background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.08)); color: white; box-shadow: 0 12px 30px rgba(0,0,0,.12); }
+.resident-contact-card:hover { border-color: rgba(255,255,255,.5); background: linear-gradient(135deg, rgba(255,255,255,.23), rgba(255,255,255,.12)); color: white; text-decoration: none; transform: translateY(-2px); }
+.resident-contact-icon { display: grid; width: 2.7rem; height: 2.7rem; place-items: center; border-radius: .7rem; background: #1877f2; color: white; font-size: 1.2rem; }
+.resident-contact-icon.resident-contact-email { background: #91304f; }
+.resident-contact-detail { display: grid; min-width: 0; gap: .25rem; }
+.resident-contact-detail small { color: rgba(255,255,255,.65); font-size: .55rem; font-weight: 800; letter-spacing: .08em; }
+.resident-contact-detail strong { overflow-wrap: anywhere; color: white; font-size: .82rem; }
+.resident-contact-detail em { color: rgba(255,255,255,.72); font-size: .62rem; font-style: normal; line-height: 1.45; }
+.resident-contact-arrow { align-self: start; color: rgba(255,255,255,.7); }
+.resident-contact-note { display: flex; align-items: flex-start; gap: .4rem; margin: 1rem 0; color: rgba(255,255,255,.68); font-size: .63rem; }
+.resident-contact-note i { color: #ffd978; }
+.resident-contact-back { display: inline-flex; align-items: center; gap: .4rem; margin-top: .35rem; color: white; font-size: .67rem; }
+.resident-contact-back:hover { color: #ffd978; }
 .request-page-heading { margin-bottom: 1.1rem; }
 .request-alert { max-width: 100%; font-size: .8rem; }
 .request-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .85fr); gap: .8rem; }
@@ -479,6 +502,7 @@ body.hide-site-footer > .site-footer { display: none; }
     .dashboard-footer { flex-wrap: wrap; gap: .5rem; padding: .7rem 1rem; }
     .dashboard-footer-social { margin-left: 0; }
     .dashboard-footer small { width: 100%; text-align: center; }
+    .resident-contact-grid { grid-template-columns: minmax(0, 1fr); }
     .dashboard-service-grid, .dashboard-lower-grid { grid-template-columns: 1fr; }
     .portal-panel { grid-column: auto; }
     .request-fields { grid-template-columns: 1fr; }

@@ -18,7 +18,7 @@ $navItems = [
         <a class="<?= $activeModule === $href ? 'active' : '' ?>" href="<?= e($href) ?>"><i class="bi <?= e($icon) ?>"></i><?= e($label) ?></a>
     <?php endforeach; ?>
     <span class="dashboard-nav-label">MORE</span>
+    <a class="<?= $activeModule === 'contact.php' ? 'active' : '' ?>" href="contact.php"><i class="bi bi-telephone"></i>Contact Office</a>
     <a class="<?= $activeModule === 'profile.php' ? 'active' : '' ?>" href="profile.php"><i class="bi bi-person"></i>My Profile</a>
-    <a href="#settings"><i class="bi bi-gear"></i>Settings</a>
     <a href="logout.php"><i class="bi bi-box-arrow-right"></i>Logout</a>
 </nav>
