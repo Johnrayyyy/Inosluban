@@ -232,6 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $pageTitle = 'Log in';
+$hideSiteFooter = true;
 require __DIR__ . '/includes/header.php';
 ?>
 <main class="auth-page login-page">

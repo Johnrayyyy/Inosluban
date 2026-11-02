@@ -5,12 +5,16 @@ require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/staff.php';
 require_once __DIR__ . '/includes/admin.php';
 require_once __DIR__ . '/includes/analytics.php';
+require_once __DIR__ . '/includes/households.php';
+require_once __DIR__ . '/includes/document_payments.php';
 require_once __DIR__ . '/includes/gemini.php';
 require_once __DIR__ . '/includes/phil_sms.php';
 
 require_admin();
 ensure_admin_schema();
 ensure_staff_tables();
+ensure_household_schema();
+ensure_document_payment_schema();
 $refreshWeatherOnLogin = !empty($_SESSION['weather_refresh_on_login']);
 unset($_SESSION['weather_refresh_on_login']);
 
@@ -234,6 +238,23 @@ foreach ($analytics['notification_status'] as $delivery) {
 }
 $successfulDeliveries = $deliveryTotals['Sent'] + $deliveryTotals['Delivered'];
 $totalDeliveries = array_sum($deliveryTotals);
+$ageGroupColors = ['#7388d8', '#e3a04d', '#5cad91', '#ca7184'];
+$ageTotal = array_sum(array_column($analytics['resident_age_groups'], 'count'));
+$ageStops = [];
+$ageOffset = 0;
+foreach ($analytics['resident_age_groups'] as $index => $group) {
+    $segment = $ageTotal > 0 ? $group['count'] / $ageTotal * 100 : 0;
+    $ageStops[] = $ageGroupColors[$index] . ' ' . number_format($ageOffset, 2, '.', '') . '% ' . number_format($ageOffset + $segment, 2, '.', '') . '%';
+    $ageOffset += $segment;
+}
+$agePieStyle = $ageTotal > 0 ? 'conic-gradient(' . implode(', ', $ageStops) . ')' : 'conic-gradient(#e9edf2 0% 100%)';
+$maxHouseholdGroup = max(1, ...array_column($analytics['household_size_groups'], 'count'));
+$maxPurokHouseholds = max(1, ...array_column($analytics['households_by_purok'], 'households'));
+$resolvedBlotterCount = array_sum(array_map(
+    static fn (array $status): int => in_array($status['label'], ['Resolved', 'Closed'], true) ? $status['count'] : 0,
+    $analytics['blotter_status']
+));
+$maxBlotterCount = max(1, ...array_column($analytics['blotter_status'], 'count'));
 $snapshot = latest_weather_snapshot();
 $latestWeather = $snapshot['weather'] ?? null;
 $pageTitle = 'Admin analytics dashboard';
@@ -262,7 +283,7 @@ require __DIR__ . '/includes/header.php';
                 <article class="analytics-kpi analytics-kpi-appointments"><span class="analytics-kpi-icon"><i class="bi bi-calendar-check"></i></span><div><small>Upcoming appointments</small><strong><?= number_format($overview['upcoming_appointments']) ?></strong><span>pending or approved</span><?= $renderKpiTrend('appointments', 'appointments') ?></div></article>
                 <article class="analytics-kpi analytics-kpi-blotter"><span class="analytics-kpi-icon"><i class="bi bi-shield-exclamation"></i></span><div><small>Open blotter cases</small><strong><?= number_format($overview['open_blotter']) ?></strong><span>awaiting resolution</span><?= $renderKpiTrend('blotter', 'reports') ?></div></article>
                 <article class="analytics-kpi analytics-kpi-staff"><span class="analytics-kpi-icon"><i class="bi bi-person-workspace"></i></span><div><small>Active staff</small><strong><?= number_format($overview['active_staff']) ?></strong><span><?= number_format($overview['published_announcements']) ?> published announcements</span><?= $renderKpiTrend('staff', 'staff accounts') ?></div></article>
-                <article class="analytics-kpi analytics-kpi-revenue"><span class="analytics-kpi-icon"><i class="bi bi-cash-coin"></i></span><div><small>Revenue</small><strong>Not tracked</strong><span><?= e($analytics['revenue']['message']) ?></span></div></article>
+                <article class="analytics-kpi analytics-kpi-revenue"><span class="analytics-kpi-icon"><i class="bi bi-cash-coin"></i></span><div><small>Document fees recorded as paid</small><strong>₱<?= number_format($analytics['revenue']['amount'], 2) ?></strong><span><?= number_format($analytics['revenue']['paid_this_month']) ?> document fees marked paid this month · ₱20 each</span></div></article>
                 <article class="analytics-kpi analytics-kpi-alerts"><span class="analytics-kpi-icon"><i class="bi bi-broadcast-pin"></i></span><div><small>Active disaster alerts</small><strong><?= number_format($overview['active_disaster_alerts']) ?></strong><span><?= number_format($overview['failed_notifications']) ?> failed notifications</span><?= $renderKpiTrend('alerts', 'alerts') ?></div></article>
             </section>
 
@@ -377,12 +398,44 @@ require __DIR__ . '/includes/header.php';
                     <?php else: ?><p class="analytics-empty">No resident records are available.</p><?php endif; ?>
                 </section>
 
-                <section class="analytics-panel">
-                    <div class="analytics-panel-heading"><span class="analytics-panel-icon analytics-blotter-icon"><i class="bi bi-shield-check"></i></span><div><h2>Blotter activity</h2><p>Incident status and most common categories</p></div></div>
-                    <div class="analytics-mini-summary">
-                        <?php foreach ($analytics['blotter_status'] as $status): ?><span><?= e($status['label']) ?><strong><?= number_format($status['count']) ?></strong></span><?php endforeach; ?>
-                        <?php if ($analytics['blotter_status'] === []): ?><small>No blotter data recorded.</small><?php endif; ?>
+                <section class="analytics-panel analytics-age-panel">
+                    <div class="analytics-panel-heading"><span class="analytics-panel-icon analytics-resident-icon"><i class="bi bi-pie-chart"></i></span><div><h2>Resident age distribution</h2><p>Active resident records and unlinked household members</p></div></div>
+                    <?php if ($ageTotal > 0): ?>
+                        <div class="analytics-age-content">
+                            <div class="analytics-age-pie" role="img" aria-label="Age distribution of <?= number_format($ageTotal) ?> people" style="background: <?= e($agePieStyle) ?>"><span><strong><?= number_format($ageTotal) ?></strong><small>people</small></span></div>
+                            <div class="analytics-age-legend">
+                                <?php foreach ($analytics['resident_age_groups'] as $index => $group): ?>
+                                    <?php $agePercent = round($group['count'] / $ageTotal * 100, 1); ?>
+                                    <div><i style="background: <?= e($ageGroupColors[$index]) ?>"></i><span><?= e($group['label']) ?><small><?= match ($group['label']) { 'Infant' => '0–2 years', 'Minor' => '3–17 years', 'Adult' => '18–59 years', default => '60+ years' } ?></small></span><strong><?= number_format($group['count']) ?><small><?= number_format($agePercent, 1) ?>%</small></strong></div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php else: ?><p class="analytics-empty">No active resident or household-member birthdate records are available.</p><?php endif; ?>
+                </section>
+
+                <section class="analytics-panel analytics-household-panel">
+                    <div class="analytics-panel-heading"><span class="analytics-panel-icon analytics-household-icon"><i class="bi bi-houses"></i></span><div><h2>Household analytics</h2><p>Registry coverage, household size, and purok distribution</p></div><a class="analytics-heading-link" href="staff_households.php">Registry <i class="bi bi-arrow-up-right"></i></a></div>
+                    <div class="analytics-household-summary">
+                        <div><small>Households</small><strong><?= number_format($analytics['household_summary']['households']) ?></strong></div>
+                        <div><small>Recorded members</small><strong><?= number_format($analytics['household_summary']['members']) ?></strong></div>
+                        <div><small>Average size</small><strong><?= number_format($analytics['household_summary']['average_size'], 1) ?></strong></div>
                     </div>
+                    <h3 class="analytics-subheading">Household size</h3>
+                    <?php if ($analytics['household_size_groups'] !== []): ?>
+                        <div class="analytics-household-bars"><?php foreach ($analytics['household_size_groups'] as $group): ?><div class="analytics-household-bar"><div><span><?= e($group['label']) ?></span><strong><?= number_format($group['count']) ?> households</strong></div><div class="analytics-household-track"><i style="width: <?= round($group['count'] / $maxHouseholdGroup * 100, 1) ?>%"></i></div></div><?php endforeach; ?></div>
+                    <?php else: ?><p class="analytics-empty">No household members have been recorded.</p><?php endif; ?>
+                    <h3 class="analytics-subheading">Largest puroks by household count</h3>
+                    <?php if ($analytics['households_by_purok'] !== []): ?>
+                        <div class="analytics-household-bars"><?php foreach ($analytics['households_by_purok'] as $purok): ?><div class="analytics-household-bar"><div><span><?= e($purok['label']) ?></span><strong><?= number_format($purok['households']) ?> households · <?= number_format($purok['members']) ?> members</strong></div><div class="analytics-household-track"><i style="width: <?= round($purok['households'] / $maxPurokHouseholds * 100, 1) ?>%"></i></div></div><?php endforeach; ?></div>
+                    <?php else: ?><p class="analytics-empty">No purok household records are available.</p><?php endif; ?>
+                </section>
+
+                <section class="analytics-panel">
+                    <div class="analytics-panel-heading"><span class="analytics-panel-icon analytics-blotter-icon"><i class="bi bi-shield-check"></i></span><div><h2>Blotter case outcomes</h2><p>Resolved cases and current case status</p></div></div>
+                    <div class="analytics-blotter-resolved"><span><i class="bi bi-check2-circle"></i> Resolved / closed</span><strong><?= number_format($resolvedBlotterCount) ?></strong></div>
+                    <?php if ($analytics['blotter_status'] !== []): ?>
+                        <div class="analytics-household-bars analytics-blotter-bars"><?php foreach ($analytics['blotter_status'] as $status): ?><div class="analytics-household-bar"><div><span><?= e($status['label']) ?></span><strong><?= number_format($status['count']) ?></strong></div><div class="analytics-household-track"><i class="<?= in_array($status['label'], ['Resolved', 'Closed'], true) ? 'is-resolved' : '' ?>" style="width: <?= round($status['count'] / $maxBlotterCount * 100, 1) ?>%"></i></div></div><?php endforeach; ?></div>
+                    <?php else: ?><p class="analytics-empty">No blotter cases recorded.</p><?php endif; ?>
                     <?php if ($analytics['blotter_categories'] !== []): ?>
                         <div class="analytics-category-list"><?php foreach (array_slice($analytics['blotter_categories'], 0, 4) as $category): ?><div><span><?= e($category['label']) ?></span><strong><?= number_format($category['count']) ?></strong></div><?php endforeach; ?></div>
                     <?php endif; ?>
@@ -405,43 +458,17 @@ require __DIR__ . '/includes/header.php';
                 </section>
 
                 <section class="analytics-panel analytics-disaster-panel">
-                    <div class="analytics-panel-heading"><span class="analytics-panel-icon analytics-alert-icon"><i class="bi bi-broadcast-pin"></i></span><div><h2>Disaster preparedness</h2><p>Create an active alert, notify residents by SMS, and resolve it when the risk has passed.</p></div><strong class="analytics-disaster-count"><?= number_format($overview['active_disaster_alerts']) ?> active</strong></div>
-                    <div class="analytics-disaster-severities"><?php foreach ($analytics['disaster_severity'] as $severity): ?><span><?= e($severity['label']) ?><strong><?= number_format($severity['count']) ?></strong></span><?php endforeach; ?><?php if ($analytics['disaster_severity'] === []): ?><span>No active alerts yet</span><?php endif; ?></div>
-                    <div class="analytics-disaster-workspace">
-                        <form class="analytics-disaster-form" method="post">
-                            <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
-                            <input type="hidden" name="action" value="create_disaster_alert">
-                            <h3>Publish a preparedness alert</h3>
-                            <label for="disaster-alert-type">Alert type</label>
-                            <input class="form-control" id="disaster-alert-type" name="alert_type" maxlength="100" placeholder="Flood, fire, evacuation..." required>
-                            <div class="analytics-disaster-fields">
-                                <div><label for="disaster-severity">Severity</label><select class="form-control" id="disaster-severity" name="severity" required><option value="Information">Information</option><option value="Advisory">Advisory</option><option value="Watch">Watch</option><option value="Warning">Warning</option><option value="Emergency">Emergency</option></select></div>
-                                <div><label for="disaster-area">Affected area</label><input class="form-control" id="disaster-area" name="affected_area" maxlength="255" placeholder="Optional"></div>
-                            </div>
-                            <label for="disaster-message">Resident guidance</label>
-                            <textarea class="form-control" id="disaster-message" name="alert_message" rows="3" maxlength="10000" required placeholder="Share verified safety instructions and where residents should get updates."></textarea>
-                            <label for="disaster-expires">Expires at <small>Leave blank if the alert has no set expiry.</small></label>
-                            <input class="form-control" id="disaster-expires" name="expires_at" type="datetime-local">
-                            <button class="btn btn-primary" type="submit"><i class="bi bi-megaphone"></i> Publish alert</button>
-                        </form>
-                        <div class="analytics-active-alerts">
-                            <h3>Active alerts</h3>
-                            <?php foreach ($analytics['active_disaster_alerts'] as $alert): ?>
+                    <div class="analytics-panel-heading"><span class="analytics-panel-icon analytics-alert-icon"><i class="bi bi-broadcast-pin"></i></span><div><h2>Disaster preparedness</h2><p>Active alert status and resident notification delivery</p></div><strong class="analytics-disaster-count"><?= number_format($overview['active_disaster_alerts']) ?> active</strong></div>
+                    <div class="analytics-disaster-severities"><?php foreach ($analytics['disaster_severity'] as $severity): ?><span><?= e($severity['label']) ?><strong><?= number_format($severity['count']) ?></strong></span><?php endforeach; ?><?php if ($analytics['disaster_severity'] === []): ?><span>No active alerts</span><?php endif; ?></div>
+                    <?php if ($analytics['active_disaster_alerts'] !== []): ?>
+                        <div class="analytics-dashboard-alert-list">
+                            <?php foreach (array_slice($analytics['active_disaster_alerts'], 0, 3) as $alert): ?>
                                 <?php $severityClass = strtolower((string) preg_replace('/[^a-z0-9]+/i', '-', $alert['severity'])); ?>
-                                <article class="analytics-active-alert">
-                                    <div class="analytics-active-alert-top"><span class="analytics-severity-badge severity-<?= e($severityClass) ?>"><?= e($alert['severity']) ?></span><time><?= e(format_app_datetime($alert['created_at'], 'M j, g:i A')) ?></time></div>
-                                    <strong><?= e($alert['type']) ?><?= $alert['area'] !== '' ? ' · ' . e($alert['area']) : '' ?></strong>
-                                    <p><?= e($alert['message']) ?></p>
-                                    <div class="analytics-alert-delivery"><span><i class="bi bi-check-circle"></i> <?= number_format($alert['delivered']) ?> sent</span><span><i class="bi bi-exclamation-circle"></i> <?= number_format($alert['failed']) ?> failed</span></div>
-                                    <div class="analytics-alert-actions">
-                                        <form method="post" onsubmit="return confirm('Send this alert by SMS to all active residents with a valid mobile number?')"><input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>"><input type="hidden" name="action" value="send_disaster_alert"><input type="hidden" name="disaster_id" value="<?= $alert['id'] ?>"><button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-send"></i> Send SMS alert</button></form>
-                                        <form method="post"><input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>"><input type="hidden" name="action" value="resolve_disaster_alert"><input type="hidden" name="disaster_id" value="<?= $alert['id'] ?>"><button class="btn btn-sm btn-outline-secondary" type="submit">Resolve</button></form>
-                                    </div>
-                                </article>
+                                <article><span class="analytics-severity-badge severity-<?= e($severityClass) ?>"><?= e($alert['severity']) ?></span><div><strong><?= e($alert['type']) ?><?= $alert['area'] !== '' ? ' · ' . e($alert['area']) : '' ?></strong><p><?= e($alert['message']) ?></p><small><?= number_format($alert['delivered']) ?> sent · <?= number_format($alert['failed']) ?> failed</small></div></article>
                             <?php endforeach; ?>
-                            <?php if ($analytics['active_disaster_alerts'] === []): ?><p class="analytics-empty">No active alerts. Publish a verified alert when residents need preparedness guidance.</p><?php endif; ?>
                         </div>
-                    </div>
+                    <?php else: ?><p class="analytics-empty">No active disaster alerts. There are no current alerts requiring action.</p><?php endif; ?>
+                    <a class="analytics-weather-link" href="admin_disaster.php">Open disaster preparedness management <i class="bi bi-arrow-up-right"></i></a>
                 </section>
             </div>
 

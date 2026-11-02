@@ -14,10 +14,12 @@ if ($config === null) {
     exit('Unknown staff module.');
 }
 if ($type === 'documents') {
+    require_once __DIR__ . '/includes/document_payments.php';
     require_once __DIR__ . '/includes/document_pickup.php';
     require_once __DIR__ . '/includes/document_pickup_email.php';
     require_once __DIR__ . '/includes/phil_sms.php';
     require_once __DIR__ . '/config/mailer.php';
+    ensure_document_payment_schema();
     ensure_document_pickup_schema();
 }
 $selectedId = filter_var($_GET['id'] ?? '', FILTER_VALIDATE_INT) ?: null;
@@ -48,7 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $previousStatusStatement->execute(['request_id' => $recordId]);
             $previousStatus = $previousStatusStatement->fetchColumn();
         }
-        $set = $type === 'documents' ? 'status = :status, assigned_staff_id = :staff_id, remarks = NULLIF(:notes, \'\')'
+        $set = $type === 'documents' ? 'status = :status, assigned_staff_id = :staff_id, remarks = NULLIF(:notes, \'\'),
+            date_completed = CASE WHEN :completed_date_status = \'Completed\' THEN COALESCE(date_completed, CURRENT_TIMESTAMP) ELSE date_completed END,
+            payment_status = CASE WHEN :completed_payment_status = \'Completed\' THEN \'Paid\' ELSE payment_status END,
+            payment_amount = CASE WHEN :completed_amount_status = \'Completed\' THEN :payment_fee ELSE payment_amount END,
+            paid_at = CASE WHEN :completed_paid_at_status = \'Completed\' THEN COALESCE(paid_at, CURRENT_TIMESTAMP) ELSE paid_at END'
             : ($type === 'blotter' ? 'status = :status, assigned_staff_id = :staff_id, resolution_notes = NULLIF(:notes, \'\'), date_resolved = CASE WHEN :resolved_status IN (\'Resolved\', \'Closed\') THEN CURRENT_TIMESTAMP ELSE date_resolved END'
             : 'status = :status, assigned_staff_id = :staff_id');
         $statement = db()->prepare("UPDATE {$config['table']} SET {$set} WHERE {$config['id']} = :record_id");
@@ -60,10 +66,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($type === 'documents' || $type === 'blotter') {
             $parameters['notes'] = $notes;
         }
+        if ($type === 'documents') {
+            $parameters['completed_date_status'] = $newStatus;
+            $parameters['completed_payment_status'] = $newStatus;
+            $parameters['completed_amount_status'] = $newStatus;
+            $parameters['completed_paid_at_status'] = $newStatus;
+            $parameters['payment_fee'] = DOCUMENT_REQUEST_FEE_PESOS;
+        }
         if ($type === 'blotter') {
             $parameters['resolved_status'] = $newStatus;
         }
         $statement->execute($parameters);
+        if ($statement->rowCount() !== 1) {
+            throw new RuntimeException('The selected request could not be found.');
+        }
         if ($type === 'documents') {
             if ($newStatus === 'Completed') {
                 $pickupStatement = db()->prepare(
@@ -139,6 +155,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $removePickupToken = db()->prepare('DELETE FROM document_pickup_token WHERE request_id = :request_id');
                 $removePickupToken->execute(['request_id' => $recordId]);
             }
+            if ($newStatus === 'Completed') {
+                $message = 'Request completed; the ₱20.00 document fee was automatically recorded as paid.'
+                    . ($message !== '' ? ' ' . $message : '');
+            }
         }
         staff_audit('REQUEST_STATUS_UPDATED', $config['table'], $recordId, ['status' => $newStatus, 'notes' => $notes]);
         if ($message === '') {
@@ -162,7 +182,8 @@ if ($type === 'documents') {
     $currentPage = min($currentPage, $totalPages);
     $statement = db()->prepare(
         "SELECT dr.request_id AS record_id, dr.document_type AS request_type, dr.purpose,
-                dr.request_date, dr.status, r.first_name, r.last_name, r.complete_address,
+                dr.request_date, dr.status, dr.payment_status, dr.payment_amount, dr.paid_at,
+                r.first_name, r.last_name, r.complete_address,
                 r.residency_status, r.valid_id_file_path, r.resident_id
          FROM document_request dr
          JOIN resident r ON r.resident_id = dr.resident_id
@@ -208,7 +229,7 @@ require __DIR__ . '/includes/header.php';
     <aside class="dashboard-sidebar"><a class="dashboard-brand" href="staff_dashboard.php"><img src="assets/images/logo.png" alt="Barangay Inosluban logo"><span><strong>BARANGAY INOSLUBAN</strong><small>LIPA CITY, BATANGAS</small><small>Staff Portal</small></span></a><?php require __DIR__ . '/includes/staff_nav.php'; ?></aside>
     <section class="dashboard-content">
         <header class="dashboard-topbar"><div class="dashboard-search"><i class="bi bi-search"></i><input type="search" placeholder="Search by resident, tracking number, or request type..." aria-label="Search requests"></div><div class="dashboard-user"><span class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e($_SESSION['user']['full_name']) ?></strong><small>Staff</small></span></div></header>
-        <div class="staff-main"><div class="staff-hero compact"><div><p class="eyebrow">APPROVAL WORKSPACE</p><h1><?= e($config['title']) ?></h1><p>Review resident submissions and update their processing status.</p></div></div>
+        <div class="staff-main"><div class="staff-hero compact"><div><p class="eyebrow">APPROVAL WORKSPACE</p><h1><?= e($config['title']) ?></h1><p><?= $type === 'documents' ? 'Review resident submissions. Each document costs ₱20.00, automatically recorded as paid when marked Completed.' : 'Review resident submissions and update their processing status.' ?></p></div></div>
             <?php if ($message): ?><div class="alert alert-success"><?= e($message) ?></div><?php endif; ?><?php if ($mailWarning !== ''): ?><div class="alert alert-warning"><?= e($mailWarning) ?></div><?php endif; ?><?php foreach ($errors as $error): ?><div class="alert alert-danger"><?= e($error) ?></div><?php endforeach; ?>
             <div class="staff-request-layout"><section class="staff-panel request-table-panel"><div class="staff-tabs"><a class="<?= $type === 'documents' ? 'active' : '' ?>" href="staff_requests.php?type=documents">Documents</a><a class="<?= $type === 'blotter' ? 'active' : '' ?>" href="staff_requests.php?type=blotter">Blotter</a><a class="<?= $type === 'appointments' ? 'active' : '' ?>" href="staff_requests.php?type=appointments">Appointments</a></div>
                 <?php if ($type === 'documents'): ?><form method="get" class="request-status-filter"><input type="hidden" name="type" value="documents"><label for="status-view"><i class="bi bi-funnel" aria-hidden="true"></i><span>Filter by status</span></label><select id="status-view" name="status_view" class="form-control"><option value="active" <?= $statusView === 'active' ? 'selected' : '' ?>>Open requests</option><option value="completed" <?= $statusView === 'completed' ? 'selected' : '' ?>>Completed / released</option><option value="all" <?= $statusView === 'all' ? 'selected' : '' ?>>All requests</option></select><button class="btn btn-primary btn-sm" type="submit">Apply</button></form><?php endif; ?>

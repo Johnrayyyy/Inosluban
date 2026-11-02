@@ -83,6 +83,81 @@ function admin_analytics_data(): array
          GROUP BY residency_status
          ORDER BY item_count DESC, residency_status'
     )->fetchAll();
+    $residentAgeGroups = $pdo->query(
+        "WITH population AS (
+            SELECT birthdate
+            FROM resident
+            WHERE residency_status = 'Active'
+            UNION ALL
+            SELECT hm.birthdate
+            FROM household_member hm
+            WHERE hm.resident_id IS NULL
+        ),
+        age_bands AS (
+            SELECT *
+            FROM (VALUES
+                ('Infant', 0, 2, 1),
+                ('Minor', 3, 17, 2),
+                ('Adult', 18, 59, 3),
+                ('Senior', 60, NULL::INT, 4)
+            ) AS bands(label, minimum_age, maximum_age, sort_order)
+        )
+        SELECT bands.label, COUNT(population.birthdate) AS item_count
+        FROM age_bands bands
+        LEFT JOIN population
+          ON EXTRACT(YEAR FROM AGE(CURRENT_DATE, population.birthdate)) >= bands.minimum_age
+         AND (bands.maximum_age IS NULL
+              OR EXTRACT(YEAR FROM AGE(CURRENT_DATE, population.birthdate)) <= bands.maximum_age)
+        GROUP BY bands.label, bands.sort_order
+        ORDER BY bands.sort_order"
+    )->fetchAll();
+    $householdSummary = $pdo->query(
+        "SELECT
+            (SELECT COUNT(*) FROM household_record) AS households,
+            (SELECT COUNT(*) FROM household_member) AS members,
+            (SELECT COUNT(*) FROM (
+                SELECT household_id
+                FROM household_member
+                GROUP BY household_id
+            ) populated) AS populated_households,
+            (SELECT COALESCE(ROUND(AVG(member_count)::NUMERIC, 1), 0)
+             FROM (
+                SELECT COUNT(*) AS member_count
+                FROM household_member
+                GROUP BY household_id
+             ) sizes) AS average_size"
+    )->fetch();
+    $householdSizeGroups = $pdo->query(
+        "SELECT CASE
+                    WHEN member_count = 1 THEN '1 member'
+                    WHEN member_count BETWEEN 2 AND 3 THEN '2–3 members'
+                    WHEN member_count BETWEEN 4 AND 5 THEN '4–5 members'
+                    ELSE '6+ members'
+                END AS label,
+                COUNT(*) AS household_count,
+                MIN(CASE
+                    WHEN member_count = 1 THEN 1
+                    WHEN member_count BETWEEN 2 AND 3 THEN 2
+                    WHEN member_count BETWEEN 4 AND 5 THEN 3
+                    ELSE 4
+                END) AS sort_order
+         FROM (
+             SELECT household_id, COUNT(*) AS member_count
+             FROM household_member
+             GROUP BY household_id
+         ) household_sizes
+         GROUP BY label
+         ORDER BY sort_order"
+    )->fetchAll();
+    $householdsByPurok = $pdo->query(
+        'SELECT h.purok, COUNT(DISTINCT h.household_id) AS household_count,
+                COUNT(hm.member_id) AS member_count
+         FROM household_record h
+         LEFT JOIN household_member hm ON hm.household_id = h.household_id
+         GROUP BY h.purok
+         ORDER BY household_count DESC, member_count DESC, h.purok
+         LIMIT 6'
+    )->fetchAll();
     $documentTypes = $pdo->query(
         'SELECT document_type, COUNT(*) AS request_count
          FROM document_request
@@ -216,6 +291,15 @@ function admin_analytics_data(): array
          ORDER BY total_seconds DESC, staff_name
          LIMIT 10"
     )->fetchAll();
+    $revenue = $pdo->query(
+        "SELECT COALESCE(SUM(payment_amount) FILTER (WHERE payment_status = 'Paid'), 0) AS total_paid,
+                COUNT(*) FILTER (WHERE payment_status = 'Paid') AS paid_requests,
+                COUNT(*) FILTER (
+                    WHERE payment_status = 'Paid'
+                      AND paid_at >= DATE_TRUNC('month', CURRENT_DATE)
+                ) AS paid_this_month
+         FROM document_request"
+    )->fetch();
 
     $monthlyMap = [];
     foreach ($monthlyActivity as $row) {
@@ -256,14 +340,36 @@ function admin_analytics_data(): array
         ];
     }
 
-    $revenue = [
-        'available' => false,
-        'amount' => null,
-        'message' => 'Payment collection is not configured; revenue is not yet tracked.',
-    ];
-
     return [
         'overview' => array_map('intval', $overview),
+        'household_summary' => [
+            'households' => (int) $householdSummary['households'],
+            'members' => (int) $householdSummary['members'],
+            'populated_households' => (int) $householdSummary['populated_households'],
+            'average_size' => (float) $householdSummary['average_size'],
+        ],
+        'household_size_groups' => array_map(
+            static fn (array $row): array => [
+                'label' => (string) $row['label'],
+                'count' => (int) $row['household_count'],
+            ],
+            $householdSizeGroups
+        ),
+        'households_by_purok' => array_map(
+            static fn (array $row): array => [
+                'label' => (string) $row['purok'],
+                'households' => (int) $row['household_count'],
+                'members' => (int) $row['member_count'],
+            ],
+            $householdsByPurok
+        ),
+        'resident_age_groups' => array_map(
+            static fn (array $row): array => [
+                'label' => (string) $row['label'],
+                'count' => (int) $row['item_count'],
+            ],
+            $residentAgeGroups
+        ),
         'kpi_changes' => $kpiChanges,
         'document_types' => array_map(
             static fn (array $row): array => ['label' => (string) $row['document_type'], 'count' => (int) $row['request_count']],
@@ -340,7 +446,12 @@ function admin_analytics_data(): array
             ],
             $staffWorktime
         ),
-        'revenue' => $revenue,
+        'revenue' => [
+            'available' => true,
+            'amount' => (float) $revenue['total_paid'],
+            'paid_requests' => (int) $revenue['paid_requests'],
+            'paid_this_month' => (int) $revenue['paid_this_month'],
+        ],
         'generated_at' => (new DateTimeImmutable('now', new DateTimeZone(APP_TIMEZONE)))->format(DATE_ATOM),
     ];
 }

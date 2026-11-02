@@ -207,6 +207,12 @@ CREATE TABLE document_request (
             'Rejected', 'Completed', 'Cancelled', 'Released'
         )),
 
+    payment_status VARCHAR(20) NOT NULL DEFAULT 'Unpaid'
+        CHECK (payment_status IN ('Unpaid', 'Paid')),
+    payment_amount NUMERIC(8,2) NOT NULL DEFAULT 20.00
+        CHECK (payment_amount = 20.00),
+    paid_at TIMESTAMPTZ,
+
     remarks TEXT,
 
     CHECK (

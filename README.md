@@ -79,10 +79,11 @@ When a document request is marked ready, the resident gets a short pickup text;
 when an admin approves a weather forecast announcement, one short text is sent
 to each active resident with a valid Philippine mobile number on file. The
 messages use plain ASCII and stay below 160 characters to minimize SMS credits.
-Admins can also publish disaster-preparedness alerts from the analytics
-dashboard and send them to active residents. Each SMS attempt is recorded for
-delivery review. SMS is optional; sending is unavailable until both settings
-are configured.
+Admins can publish and resolve disaster-preparedness alerts from the dedicated
+Disaster Preparedness navigation page and send them to active residents. The
+analytics dashboard shows active-alert counts and a short alert summary. Each
+SMS attempt is recorded for delivery review. SMS is optional; sending is
+unavailable until both settings are configured.
 
 The login page's password recovery sends a one-time email link that expires
 after one hour. The default application URL is
@@ -153,7 +154,11 @@ Hourly weather refreshes are also recorded as observations, with recent saved
 advisories imported as initial history for the weather trend.
 Its AI outlook sends only aggregated metrics and the latest weather forecast to
 Gemini; no resident identities, account usernames, passwords, or contact details
-are included. Revenue is shown as untracked until payment collection is added.
+are included. Household analytics summarize member counts, household sizes,
+purok distribution, and age bands for active residents plus unlinked household
+members. Completing a document request automatically marks its fixed ₱20.00
+fee as paid; the dashboard reports these recorded fees as collected revenue.
+The deployment applies idempotent database migrations for the payment fields.
 The registration terms are a working draft based on Philippine privacy
 requirements. Confirm the barangay's privacy contact, retention schedule, and
 service-specific data practices with its Data Protection Officer or legal
