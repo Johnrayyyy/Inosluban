@@ -203,10 +203,10 @@ $activitySeries = [
     ['key' => 'blotter_count', 'label' => 'Blotter Cases', 'color' => '#f27f99'],
     ['key' => 'appointment_count', 'label' => 'Appointments', 'color' => '#f5bdcc'],
 ];
-$maxActivityCount = max(1, ...array_map(
+$maxActivityCount = max(array_merge([1], array_map(
     static fn (array $month): int => max($month['count'], $month['blotter_count'], $month['appointment_count']),
     $analytics['monthly_activity']
-));
+)));
 $rawActivityStep = $maxActivityCount / 4;
 $activityMagnitude = 10 ** floor(log10($rawActivityStep));
 $activityStepScale = $rawActivityStep / $activityMagnitude;
@@ -225,13 +225,13 @@ foreach ($activitySeries as $series) {
     }
     $activityChartLines[] = ['series' => $series, 'points' => $points];
 }
-$maxWeekdayCount = max(1, ...array_column($analytics['weekday_documents'], 'count'));
-$maxDocumentTypeCount = max(1, ...array_column($analytics['document_types'], 'count'));
-$maxWeatherTemperature = max(1, ...array_map(
+$maxWeekdayCount = max(array_merge([1], array_column($analytics['weekday_documents'], 'count')));
+$maxDocumentTypeCount = max(array_merge([1], array_column($analytics['document_types'], 'count')));
+$maxWeatherTemperature = max(array_merge([1], array_map(
     static fn (array $row): float => (float) ($row['average_temperature'] ?? 0),
     $analytics['weather_history']
-));
-$maxStaffHours = max(1, ...array_column($analytics['staff_worktime'], 'hours'));
+)));
+$maxStaffHours = max(array_merge([1], array_column($analytics['staff_worktime'], 'hours')));
 $deliveryTotals = ['Sent' => 0, 'Delivered' => 0, 'Failed' => 0, 'Queued' => 0];
 foreach ($analytics['notification_status'] as $delivery) {
     $deliveryTotals[$delivery['status']] = ($deliveryTotals[$delivery['status']] ?? 0) + $delivery['count'];
@@ -248,13 +248,13 @@ foreach ($analytics['resident_age_groups'] as $index => $group) {
     $ageOffset += $segment;
 }
 $agePieStyle = $ageTotal > 0 ? 'conic-gradient(' . implode(', ', $ageStops) . ')' : 'conic-gradient(#e9edf2 0% 100%)';
-$maxHouseholdGroup = max(1, ...array_column($analytics['household_size_groups'], 'count'));
-$maxPurokHouseholds = max(1, ...array_column($analytics['households_by_purok'], 'households'));
+$maxHouseholdGroup = max(array_merge([1], array_column($analytics['household_size_groups'], 'count')));
+$maxPurokHouseholds = max(array_merge([1], array_column($analytics['households_by_purok'], 'households')));
 $resolvedBlotterCount = array_sum(array_map(
     static fn (array $status): int => in_array($status['label'], ['Resolved', 'Closed'], true) ? $status['count'] : 0,
     $analytics['blotter_status']
 ));
-$maxBlotterCount = max(1, ...array_column($analytics['blotter_status'], 'count'));
+$maxBlotterCount = max(array_merge([1], array_column($analytics['blotter_status'], 'count')));
 $snapshot = latest_weather_snapshot();
 $latestWeather = $snapshot['weather'] ?? null;
 $pageTitle = 'Admin analytics dashboard';
