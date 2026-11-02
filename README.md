@@ -175,12 +175,21 @@ creation, the system links an unregistered roster entry only when the full name
 and birthdate match exactly one household member. Ambiguous matches are left
 unlinked for manual assignment.
 
+Staff and admin accounts can open **My Account** from the staff navigation to
+upload a JPG, PNG, or WEBP profile photo (up to 2 MB) and change their password
+after confirming the current password. Profile image bytes are stored in the
+PostgreSQL account record so photos persist across deployments and instance
+restarts. The profile page adds the image columns automatically to existing
+databases.
+
 ## Folder guide
 
 - `index.php` — login page and login processing.
 - `register.php` — registration page and validation.
 - `dashboard.php` — the first page shown after login.
 - `admin_analytics.php` — aggregate admin dashboard and AI outlook.
+- `staff_profile.php` — authenticated staff/admin profile photo and password settings.
+- `staff_profile_photo.php` — authenticated profile image delivery.
 - `staff_document_templates.php` — staff-only field editing and PDF generation, opened from document request details; request-list View opens the populated PDF in a new tab.
 - `logout.php` — safely ends the session.
 - `config/` — application settings.

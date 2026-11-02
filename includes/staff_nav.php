@@ -24,6 +24,7 @@ if (!$isBhw) {
     <?php endif; ?>
     <?php if ($isAdmin || $isBhw): ?><a class="<?= $staffModule === 'staff_households.php' ? 'active' : '' ?>" href="staff_households.php"><i class="bi bi-houses"></i>Household Registry</a><?php endif; ?>
     <span class="dashboard-nav-label">MORE</span>
+    <a class="<?= $staffModule === 'staff_profile.php' ? 'active' : '' ?>" href="staff_profile.php"><i class="bi bi-person-gear"></i>My Account</a>
     <?php if (($_SESSION['user']['role'] ?? '') === 'admin'): ?><a class="<?= $staffModule === 'admin_disaster.php' ? 'active' : '' ?>" href="admin_disaster.php"><i class="bi bi-broadcast-pin"></i>Disaster Preparedness</a><a class="<?= $staffModule === 'admin_staff.php' ? 'active' : '' ?>" href="admin_staff.php"><i class="bi bi-person-plus"></i>Manage Staff</a><?php endif; ?>
     <?php if (($_SESSION['user']['role'] ?? '') === 'admin'): ?><a class="<?= $staffModule === 'admin_audit.php' ? 'active' : '' ?>" href="admin_audit.php"><i class="bi bi-shield-lock"></i>Audit &amp; Time Logs</a><a class="<?= $staffModule === 'admin_announcements.php' ? 'active' : '' ?>" href="admin_announcements.php"><i class="bi bi-megaphone"></i>Announcements</a><a class="<?= $staffModule === 'admin_weather.php' ? 'active' : '' ?>" href="admin_weather.php"><i class="bi bi-cloud-sun"></i>Weather Advisory</a><?php endif; ?>
     <a href="logout.php"><i class="bi bi-box-arrow-right"></i>Logout</a>

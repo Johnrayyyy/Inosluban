@@ -110,6 +110,9 @@ CREATE TABLE user_account (
 
     username VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    profile_image_data BYTEA,
+    profile_image_mime VARCHAR(50)
+        CHECK (profile_image_mime IS NULL OR profile_image_mime IN ('image/jpeg', 'image/png', 'image/webp')),
 
     -- Public registration inherits this value. Staff/admin accounts must be
     -- created by authorized administration code with an explicit role.

@@ -1426,11 +1426,34 @@ body.hide-site-footer > .site-footer { display: none; }
 .admin-staff-record-fields .form-control { min-width: 0; min-height: 34px; border-color: #e0e5ea; background: #fff; color: #3a4451; font-size: .58rem; }
 .admin-staff-record-fields .btn { min-height: 34px; padding: .35rem .55rem; font-size: .58rem; }
 
+.staff-profile-main { max-width: 1150px; }
+.staff-profile-heading { margin-bottom: 1rem; padding: 1.4rem 1.5rem; border: 1px solid #e5e9ef; border-radius: 1rem; background: linear-gradient(115deg, #fff, #f8fafc); box-shadow: 0 .5rem 1.6rem rgba(26, 36, 52, .06); }
+.staff-profile-heading h1 { margin: 0; color: #27313e; font-size: clamp(1.45rem, 3vw, 2rem); }
+.staff-profile-heading > p:last-child { margin: .35rem 0 0; color: #737e8b; font-size: .75rem; }
+.staff-profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: .85rem; }
+.staff-profile-card { border: 1px solid #e5e9ef; background: #fff; box-shadow: 0 .5rem 1.5rem rgba(26, 36, 52, .06); }
+.staff-profile-section-heading { display: flex; align-items: center; gap: .65rem; padding: 1rem 1.1rem; border-bottom: 1px solid #edf0f3; }
+.staff-profile-section-heading > span { display: grid; flex: 0 0 2.2rem; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: .65rem; background: #f9eaf0; color: #9c3153; font-size: 1rem; }
+.staff-profile-section-heading h2 { margin: 0; color: #303a47; font-size: .9rem; font-weight: 750; }
+.staff-profile-section-heading p { margin: .18rem 0 0; color: #87909b; font-size: .59rem; }
+.staff-profile-preview { display: flex; align-items: center; gap: .75rem; margin: 1rem 1.1rem; }
+.staff-profile-preview > img, .staff-profile-preview > span { display: grid; flex: 0 0 4.5rem; place-items: center; width: 4.5rem; height: 4.5rem; overflow: hidden; border-radius: 50%; background: #f2e7ec; color: #91304f; font-size: 2rem; object-fit: cover; }
+.staff-profile-preview > div { display: grid; gap: .2rem; }
+.staff-profile-preview strong { color: #303a47; font-size: .82rem; }
+.staff-profile-preview small, .staff-profile-form small { color: #838d99; font-size: .6rem; }
+.staff-profile-form { display: grid; gap: .6rem; padding: 0 1.1rem 1.1rem; }
+.staff-profile-form .form-label { margin: 0; color: #545f6d; font-size: .64rem; font-weight: 700; }
+.staff-profile-form .form-control { min-height: 40px; border-color: #dfe4ea; background: #fff; color: #303a47; font-size: .68rem; }
+.staff-profile-form > .btn { justify-self: start; margin-top: .2rem; padding: .55rem .8rem; font-size: .65rem; }
+.staff-password-form { padding-top: 1rem; }
+.staff-password-form > div { display: grid; gap: .3rem; }
+
 @media (max-width: 900px) {
     .dashboard-content { width: calc(100% - 190px); }
     .request-columns, .tracking-columns, .blotter-columns, .appointment-dashboard-grid, .ai-assistant-layout { grid-template-columns: minmax(0, 1fr); }
     .request-columns > .request-card, .tracking-columns > .request-card { height: auto; }
     .admin-staff-layout { grid-template-columns: 1fr; }
+    .staff-profile-grid { grid-template-columns: 1fr; }
     .admin-staff-directory { min-width: 0; }
 }
 @media (max-width: 600px) {
