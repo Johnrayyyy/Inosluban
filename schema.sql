@@ -365,8 +365,14 @@ VALUES
      'According to the history published by the City of Lipa, elders associated the name with a robbery at a woman named Ines'' home. The phrase “Si Ines, nilooban!” was later connected to the name Inosluban.',
      'https://lipa.gov.ph/barangay-profiles/', 'City of Lipa - Barangay Profiles'),
     ('Local Leadership', 'Who is listed in the Inosluban barangay directory?',
-     'The City of Lipa barangay directory lists Miguel L. Olgado as Chairman, Lovely V. Dungo as Secretary, and Blesilda H. Ludovice as Treasurer for Inosluban. Directory information may change, so residents should confirm current officers with the barangay office.',
-     'https://lipa.gov.ph/barangay-profiles/', 'City of Lipa - Barangay Profiles'),
+     'The current Punong Barangay is Hon. Miguel L. Olgado. Barangay Kagawad are Hon. Merlita P. Garcia, Hon. Elena B. Aguilera, Hon. Felix A. Magcawas, Hon. Jericho Dumlao, Hon. Omar M. Cabrera, and Hon. Nestor Balita. This roster was supplied for the barangay portal; confirm with the barangay office if details need updating.',
+     NULL, 'Roster supplied by the barangay portal administrator'),
+    ('Sangguniang Kabataan Officials', 'Who are the Sangguniang Kabataan (SK) officials of Barangay Inosluban?',
+     'The SK Chairperson is Hon. Ashlie Nicole Gonzales. SK Kagawad (Councilors) are Faye Abueg, Gemma Marquez, Jean Michelle Maoirat, Lawrence Macahia, Gian Carlo Barairo, and Mylene Joycee Calise. This roster was supplied for the barangay portal; confirm with the barangay office if details need updating.',
+     NULL, 'Roster supplied by the barangay portal administrator'),
+    ('Developers', 'Who developed the Barangay Inosluban portal?',
+     'The portal developers are Mitra, John Ray I.; Lana, Patrick Jerald O.; and Maralit, Ben Jairo A.',
+     NULL, 'Developer credits supplied for the barangay portal'),
     ('Economy and Landmarks', 'What industry is specifically mentioned for Inosluban?',
      'The City of Lipa barangay profile states that Inosluban caters the first semiconductor industry in Lipa, PKI (Pilipinas Kyohritsu, Inc.).',
      'https://lipa.gov.ph/barangay-profiles/', 'City of Lipa - Barangay Profiles'),
@@ -385,7 +391,12 @@ VALUES
     ('Contact Information', 'What is the official Facebook page of Barangay Inosluban?',
      'The supplied public contact information identifies “Brgy. Inosluban | Lipa City” as the official Facebook page: https://www.facebook.com/p/Brgy-Inosluban-61553651555583/.',
      'https://www.facebook.com/p/Brgy-Inosluban-61553651555583/', 'Brgy. Inosluban | Lipa City official Facebook page')
-ON CONFLICT (category, question) DO NOTHING;
+ON CONFLICT (category, question) DO UPDATE
+SET answer = EXCLUDED.answer,
+    source_url = EXCLUDED.source_url,
+    source_name = EXCLUDED.source_name,
+    is_published = TRUE,
+    updated_at = CURRENT_TIMESTAMP;
 
 -- 9. DISASTER ALERT
 CREATE TABLE disaster_preparedness (

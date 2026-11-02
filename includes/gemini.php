@@ -168,7 +168,9 @@ function barangay_ai_context(bool $admin = false): string
         ['Identity', 'What is the alternate spelling of Barangay Inosluban?', 'Barangay Inosluban is also spelled Inosloban in some references and is a barangay of Lipa City, Batangas.', 'https://brgy.to/batangas/lipa/inosloban', 'brgy.to - Inosloban, Lipa, Batangas'],
         ['Demographics', 'What language is commonly associated with Inosluban?', 'brgy.to identifies Tagalog, including the Batangas dialect, as the language associated with Inosloban.', 'https://brgy.to/batangas/lipa/inosloban', 'brgy.to - Inosloban, Lipa, Batangas'],
         ['History', 'How did Barangay Inosluban get its name?', 'According to the history published by the City of Lipa, elders associated the name with a robbery at a woman named Ines\' home. The phrase “Si Ines, nilooban!” was later connected to the name Inosluban.', 'https://lipa.gov.ph/barangay-profiles/', 'City of Lipa - Barangay Profiles'],
-        ['Local Leadership', 'Who is listed in the Inosluban barangay directory?', 'The City of Lipa barangay directory lists Miguel L. Olgado as Chairman, Lovely V. Dungo as Secretary, and Blesilda H. Ludovice as Treasurer for Inosluban. Directory information may change, so residents should confirm current officers with the barangay office.', 'https://lipa.gov.ph/barangay-profiles/', 'City of Lipa - Barangay Profiles'],
+        ['Local Leadership', 'Who is listed in the Inosluban barangay directory?', 'The current Punong Barangay is Hon. Miguel L. Olgado. Barangay Kagawad are Hon. Merlita P. Garcia, Hon. Elena B. Aguilera, Hon. Felix A. Magcawas, Hon. Jericho Dumlao, Hon. Omar M. Cabrera, and Hon. Nestor Balita. This roster was supplied for the barangay portal; confirm with the barangay office if details need updating.', null, 'Roster supplied by the barangay portal administrator'],
+        ['Sangguniang Kabataan Officials', 'Who are the Sangguniang Kabataan (SK) officials of Barangay Inosluban?', 'The SK Chairperson is Hon. Ashlie Nicole Gonzales. SK Kagawad (Councilors) are Faye Abueg, Gemma Marquez, Jean Michelle Maoirat, Lawrence Macahia, Gian Carlo Barairo, and Mylene Joycee Calise. This roster was supplied for the barangay portal; confirm with the barangay office if details need updating.', null, 'Roster supplied by the barangay portal administrator'],
+        ['Developers', 'Who developed the Barangay Inosluban portal?', 'The portal developers are Mitra, John Ray I.; Lana, Patrick Jerald O.; and Maralit, Ben Jairo A.', null, 'Developer credits supplied for the barangay portal'],
         ['Economy and Landmarks', 'What industry is specifically mentioned for Inosluban?', 'The City of Lipa barangay profile states that Inosluban caters the first semiconductor industry in Lipa, PKI (Pilipinas Kyohritsu, Inc.).', 'https://lipa.gov.ph/barangay-profiles/', 'City of Lipa - Barangay Profiles'],
         ['Location', 'What road and coordinates are shown in the Wikimedia Inosluban photo?', 'The Wikimedia Commons file describes a location in Inosluban along the Manila-Batangas Road, also called Jose P. Laurel Highway, and records approximate coordinates of 13.981667 latitude and 121.169444 longitude for the image.', 'https://commons.wikimedia.org/wiki/File:728Inosluban,_Lipa_City,_Batangas_10.jpg', 'Wikimedia Commons - Inosluban, Lipa City, Batangas 10'],
         ['Office Hours', 'What are the Barangay Hall of Inosluban office hours?', 'The supplied public office-hours information lists Monday to Friday from 8:00 AM to 5:00 PM, Saturday from 8:00 AM to 12:00 PM for basic desk services, and Sunday closed. Residents should verify schedules before visiting because hours may change.', 'https://www.facebook.com/61553988621875/posts/barangay-office-hoursmonday-friday-800am-500pmsaturday-800am-1200-noonsunday-clo/122124795758132954/', 'Barangay Inosluban public office-hours notice'],
@@ -179,7 +181,12 @@ function barangay_ai_context(bool $admin = false): string
     $knowledgeInsert = db()->prepare(
         "INSERT INTO barangay_knowledge (category, question, answer, source_url, source_name)
          VALUES (:category, :question, :answer, :source_url, :source_name)
-         ON CONFLICT (category, question) DO NOTHING"
+         ON CONFLICT (category, question) DO UPDATE
+         SET answer = EXCLUDED.answer,
+             source_url = EXCLUDED.source_url,
+             source_name = EXCLUDED.source_name,
+             is_published = TRUE,
+             updated_at = CURRENT_TIMESTAMP"
     );
     foreach ($verifiedKnowledge as [$category, $question, $answer, $sourceUrl, $sourceName]) {
         $knowledgeInsert->execute([
