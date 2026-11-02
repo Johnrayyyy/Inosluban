@@ -10,6 +10,33 @@ document.querySelectorAll('[data-password-toggle]').forEach((button) => {
     });
 });
 
+document.querySelectorAll('.dashboard-search input[aria-label="Search portal"]').forEach((input) => {
+    const searchContainer = input.closest('.dashboard-search');
+    if (!searchContainer) {
+        return;
+    }
+
+    const form = document.createElement('form');
+    form.className = searchContainer.className;
+    form.action = 'resident_search.php';
+    form.method = 'get';
+    form.setAttribute('role', 'search');
+    input.value = new URLSearchParams(window.location.search).get('q') || input.value;
+    input.name = 'q';
+
+    const iconButton = document.createElement('button');
+    iconButton.className = 'resident-search-submit';
+    iconButton.type = 'submit';
+    iconButton.setAttribute('aria-label', 'Search portal');
+    const icon = searchContainer.querySelector('i');
+    if (icon) {
+        iconButton.append(icon);
+    }
+
+    searchContainer.replaceWith(form);
+    form.append(iconButton, input);
+});
+
 const requestModule = document.querySelector('.request-module');
 const themeToggle = document.querySelector('[data-theme-toggle]');
 const weatherRefreshOnLogin = document.querySelector('[data-weather-refresh-on-login]');
