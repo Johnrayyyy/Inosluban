@@ -1340,7 +1340,7 @@ body.hide-site-footer > .site-footer { display: none; }
 .admin-timesheet-panel { padding: 1.1rem !important; }
 .admin-timesheet-heading h2 { margin: 0; color: #303a47; font-size: 1rem; font-weight: 750; }
 .admin-timesheet-heading p { margin: .25rem 0 0; color: #7d8793; font-size: .68rem; }
-.admin-timesheet-filter { grid-template-columns: minmax(240px, 1fr) auto auto; margin: .9rem 0 1rem; }
+.admin-timesheet-filter { grid-template-columns: minmax(240px, 1fr) minmax(150px, .4fr) auto auto; margin: .9rem 0 1rem; }
 .admin-timesheet-filter .form-control { min-height: 40px; background: #fff; border-color: #dfe3e9; color: #252a34; font-size: .75rem; }
 .admin-timesheet-staff-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: .65rem; }
 .admin-timesheet-staff-card { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); align-items: center; gap: .65rem; padding: .8rem; border: 1px solid #e8ebf0; border-radius: .75rem; background: linear-gradient(135deg, #fff, #fafbfd); }
@@ -1361,6 +1361,14 @@ body.hide-site-footer > .site-footer { display: none; }
 .admin-timesheet-selected > div > small { color: #929aa4; font-size: .5rem; font-weight: 800; letter-spacing: .08em; }
 .admin-timesheet-selected h3 { margin: 0; color: #303a47; font-size: .9rem; }
 .admin-timesheet-selected > div > span { color: #77828f; font-size: .6rem; }
+.admin-attendance-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; margin: .8rem 0 1rem; padding: .8rem; border: 1px solid #e8ebf0; border-radius: .75rem; background: #fbfcfd; }
+.admin-attendance-stat { display: grid; gap: .2rem; }
+.admin-attendance-stat small { color: #7d8793; font-size: .6rem; }
+.admin-attendance-stat strong { color: #303a47; font-size: .8rem; }
+.admin-attendance-dates { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; padding-top: .7rem; border-top: 1px solid #e8ebf0; }
+.admin-attendance-dates h4 { margin: 0 0 .25rem; color: #46515e; font-size: .65rem; font-weight: 750; }
+.admin-attendance-dates p { margin: 0; color: #77828f; font-size: .62rem; line-height: 1.6; overflow-wrap: anywhere; }
+.admin-attendance-note { grid-column: 1 / -1; margin: 0; color: #8a929b; font-size: .56rem; }
 .admin-timesheet-table { min-width: 600px; }
 .admin-timesheet-table td { vertical-align: middle; }
 .request-status-filter { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin: .8rem 0; }
@@ -1492,6 +1500,8 @@ body.hide-site-footer > .site-footer { display: none; }
     .audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .audit-search-field { grid-column: 1 / -1; }
     .admin-timesheet-filter { grid-template-columns: minmax(0, 1fr); }
+    .admin-attendance-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-attendance-dates { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 640px) {
@@ -1507,6 +1517,8 @@ body.hide-site-footer > .site-footer { display: none; }
     .audit-filters { grid-template-columns: minmax(0, 1fr); }
     .audit-search-field { grid-column: auto; }
     .admin-timesheet-filter { grid-template-columns: minmax(0, 1fr); }
+    .admin-attendance-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-attendance-dates { grid-template-columns: minmax(0, 1fr); }
     .document-template-actions { flex-direction: column-reverse; }
     .document-template-actions .btn { width: 100%; }
     .appointment-calendar { gap: .15rem; }

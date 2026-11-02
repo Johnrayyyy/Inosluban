@@ -461,6 +461,18 @@ CREATE TABLE staff_time_log (
     CHECK (clock_out IS NULL OR clock_out >= clock_in)
 );
 
+CREATE TABLE staff_monthly_time_summary (
+    user_id INT NOT NULL REFERENCES user_account(user_id) ON DELETE CASCADE,
+    staff_id INT NOT NULL,
+    staff_name VARCHAR(201) NOT NULL,
+    month_start DATE NOT NULL,
+    shifts INT NOT NULL,
+    total_seconds BIGINT NOT NULL,
+    present_dates DATE[] NOT NULL DEFAULT ARRAY[]::DATE[],
+    archived_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, month_start)
+);
+
 CREATE TABLE weather_advisory (
     advisory_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     created_by_user_id INT REFERENCES user_account(user_id) ON DELETE SET NULL,

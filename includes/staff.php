@@ -18,6 +18,19 @@ function ensure_staff_tables(): void
             CHECK (clock_out IS NULL OR clock_out >= clock_in)
         )"
     );
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS staff_monthly_time_summary (
+            user_id INT NOT NULL REFERENCES user_account(user_id) ON DELETE CASCADE,
+            staff_id INT NOT NULL,
+            staff_name VARCHAR(201) NOT NULL,
+            month_start DATE NOT NULL,
+            shifts INT NOT NULL,
+            total_seconds BIGINT NOT NULL,
+            present_dates DATE[] NOT NULL DEFAULT ARRAY[]::DATE[],
+            archived_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, month_start)
+        )"
+    );
     db()->exec('ALTER TABLE staff_time_log ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ');
     db()->exec(
         'UPDATE staff_time_log
@@ -35,6 +48,48 @@ function ensure_staff_tables(): void
              )
          WHERE clock_out IS NULL
            AND last_activity_at < CURRENT_TIMESTAMP - INTERVAL '10 minutes'"
+    );
+}
+
+function archive_staff_monthly_time(): void
+{
+    ensure_staff_tables();
+    db()->exec(
+        "INSERT INTO staff_monthly_time_summary (
+            user_id, staff_id, staff_name, month_start, shifts, total_seconds, present_dates, archived_at
+        )
+        SELECT t.user_id,
+               s.staff_id,
+               BTRIM(CONCAT_WS(' ', s.first_name, s.last_name)),
+               DATE_TRUNC('month', t.clock_in AT TIME ZONE 'Asia/Manila')::DATE,
+               COUNT(*)::INT,
+               COALESCE(SUM(COALESCE(
+                   t.total_seconds,
+                   FLOOR(EXTRACT(EPOCH FROM (
+                       COALESCE(
+                           t.clock_out,
+                           LEAST(CURRENT_TIMESTAMP, COALESCE(t.last_activity_at, t.clock_in) + INTERVAL '10 minutes')
+                       ) - t.clock_in
+                   )))::INT
+               )), 0)::BIGINT,
+               ARRAY_AGG(
+                   DISTINCT (t.clock_in AT TIME ZONE 'Asia/Manila')::DATE
+                   ORDER BY (t.clock_in AT TIME ZONE 'Asia/Manila')::DATE
+               ),
+               CURRENT_TIMESTAMP
+        FROM staff_time_log t
+        JOIN staff s ON s.user_id = t.user_id
+        WHERE DATE_TRUNC('month', t.clock_in AT TIME ZONE 'Asia/Manila')
+              < DATE_TRUNC('month', CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila')
+          AND NOT EXISTS (
+              SELECT 1
+              FROM staff_monthly_time_summary archived
+              WHERE archived.user_id = t.user_id
+                AND archived.month_start = DATE_TRUNC('month', t.clock_in AT TIME ZONE 'Asia/Manila')::DATE
+          )
+        GROUP BY t.user_id, s.staff_id, s.first_name, s.last_name,
+                 DATE_TRUNC('month', t.clock_in AT TIME ZONE 'Asia/Manila')
+        ON CONFLICT (user_id, month_start) DO NOTHING"
     );
 }
 

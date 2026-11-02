@@ -105,24 +105,67 @@ if ($timeStaffInput !== '' && (!$timeStaffId || $timeStaffId < 1)) {
     $errors[] = 'Select a valid staff member for the time sheet.';
     $timeStaffId = null;
 }
-$timeStaffStatement = db()->query(
-    "SELECT s.staff_id, s.first_name, s.last_name, s.position,
-            COUNT(t.time_log_id) AS shifts,
-            COALESCE(SUM(COALESCE(
-                t.total_seconds,
-                FLOOR(EXTRACT(EPOCH FROM (
-                    COALESCE(
-                        t.clock_out,
-                        LEAST(CURRENT_TIMESTAMP, COALESCE(t.last_activity_at, t.clock_in) + INTERVAL '10 minutes')
-                    ) - t.clock_in
-                )))::INT
-            )), 0) AS total_seconds,
-            COUNT(t.time_log_id) FILTER (WHERE t.clock_out IS NULL) AS active_sessions
-     FROM staff s
-     LEFT JOIN staff_time_log t ON t.user_id = s.user_id
-     GROUP BY s.staff_id, s.first_name, s.last_name, s.position
-     ORDER BY s.last_name, s.first_name"
-);
+$timeZone = new DateTimeZone(APP_TIMEZONE);
+$currentMonthStart = new DateTimeImmutable('first day of this month 00:00:00', $timeZone);
+$monthInput = $_GET['month'] ?? '';
+$monthValue = $currentMonthStart->format('Y-m');
+if (!is_string($monthInput)) {
+    $errors[] = 'Select a valid month for the time sheet.';
+} elseif ($monthInput !== '') {
+    $parsedMonth = DateTimeImmutable::createFromFormat('!Y-m', $monthInput, $timeZone);
+    if (!$parsedMonth || $parsedMonth->format('Y-m') !== $monthInput || $parsedMonth > $currentMonthStart) {
+        $errors[] = 'Select a valid current or previous month.';
+    } else {
+        $monthValue = $monthInput;
+    }
+}
+$monthStart = DateTimeImmutable::createFromFormat('!Y-m-d', $monthValue . '-01', $timeZone);
+$nextMonthStart = $monthStart->modify('+1 month');
+$monthStartValue = $monthStart->format('Y-m-d');
+$nextMonthStartValue = $nextMonthStart->format('Y-m-d');
+$isCurrentMonth = $monthStart == $currentMonthStart;
+archive_staff_monthly_time();
+
+if ($isCurrentMonth) {
+    $timeStaffStatement = db()->prepare(
+        "SELECT s.staff_id, s.user_id, s.first_name, s.last_name, s.position, s.created_at,
+                COUNT(t.time_log_id) AS shifts,
+                COALESCE(SUM(COALESCE(
+                    t.total_seconds,
+                    FLOOR(EXTRACT(EPOCH FROM (
+                        COALESCE(
+                            t.clock_out,
+                            LEAST(CURRENT_TIMESTAMP, COALESCE(t.last_activity_at, t.clock_in) + INTERVAL '10 minutes')
+                        ) - t.clock_in
+                    )))::INT
+                )), 0) AS total_seconds,
+                COUNT(t.time_log_id) FILTER (WHERE t.clock_out IS NULL) AS active_sessions
+         FROM staff s
+         LEFT JOIN staff_time_log t
+           ON t.user_id = s.user_id
+          AND (t.clock_in AT TIME ZONE 'Asia/Manila') >= CAST(:month_start AS DATE)
+          AND (t.clock_in AT TIME ZONE 'Asia/Manila') < CAST(:next_month AS DATE)
+         GROUP BY s.staff_id, s.user_id, s.first_name, s.last_name, s.position, s.created_at
+         ORDER BY s.last_name, s.first_name"
+    );
+    $timeStaffStatement->execute([
+        'month_start' => $monthStartValue,
+        'next_month' => $nextMonthStartValue,
+    ]);
+} else {
+    $timeStaffStatement = db()->prepare(
+        "SELECT s.staff_id, s.user_id, s.first_name, s.last_name, s.position, s.created_at,
+                COALESCE(m.shifts, 0) AS shifts,
+                COALESCE(m.total_seconds, 0) AS total_seconds,
+                0 AS active_sessions
+         FROM staff s
+         LEFT JOIN staff_monthly_time_summary m
+           ON m.user_id = s.user_id
+          AND m.month_start = CAST(:month_start AS DATE)
+         ORDER BY s.last_name, s.first_name"
+    );
+    $timeStaffStatement->execute(['month_start' => $monthStartValue]);
+}
 $timeStaffMembers = $timeStaffStatement->fetchAll();
 $selectedTimeStaff = null;
 foreach ($timeStaffMembers as $member) {
@@ -137,43 +180,108 @@ if ($timeStaffId !== null && $selectedTimeStaff === null) {
 }
 $timePageSize = 10;
 $timeCurrentPage = max(1, (int) (filter_var($_GET['time_page'] ?? 1, FILTER_VALIDATE_INT) ?: 1));
-$timeCountStatement = db()->prepare(
-    'SELECT COUNT(*)
-     FROM staff_time_log t
-     JOIN staff s ON s.user_id = t.user_id
-     WHERE s.staff_id = COALESCE(:staff_id, s.staff_id)'
+$timeTotalRows = 0;
+$timeTotalPages = 1;
+$timeLogs = [];
+$presentDates = [];
+$workDates = [];
+$absentDates = [];
+if ($selectedTimeStaff !== null) {
+    $timeCountStatement = db()->prepare(
+        "SELECT COUNT(*)
+         FROM staff_time_log t
+         WHERE t.user_id = :user_id
+           AND (t.clock_in AT TIME ZONE 'Asia/Manila') >= CAST(:month_start AS DATE)
+           AND (t.clock_in AT TIME ZONE 'Asia/Manila') < CAST(:next_month AS DATE)"
+    );
+    $timeCountStatement->execute([
+        'user_id' => (int) $selectedTimeStaff['user_id'],
+        'month_start' => $monthStartValue,
+        'next_month' => $nextMonthStartValue,
+    ]);
+    $timeTotalRows = (int) $timeCountStatement->fetchColumn();
+    $timeTotalPages = max(1, (int) ceil($timeTotalRows / $timePageSize));
+    $timeCurrentPage = min($timeCurrentPage, $timeTotalPages);
+
+    $timeLogsStatement = db()->prepare(
+        "SELECT t.clock_in AT TIME ZONE 'Asia/Manila' AS clock_in_local,
+                t.clock_out AT TIME ZONE 'Asia/Manila' AS clock_out_local,
+                COALESCE(
+                    t.total_seconds,
+                    FLOOR(EXTRACT(EPOCH FROM (
+                        COALESCE(
+                            t.clock_out,
+                            LEAST(CURRENT_TIMESTAMP, COALESCE(t.last_activity_at, t.clock_in) + INTERVAL '10 minutes')
+                        ) - t.clock_in
+                    )))::INT
+                ) AS total_seconds,
+                s.first_name, s.last_name, s.position
+         FROM staff_time_log t
+         JOIN staff s ON s.user_id = t.user_id
+         WHERE t.user_id = :user_id
+           AND (t.clock_in AT TIME ZONE 'Asia/Manila') >= CAST(:month_start AS DATE)
+           AND (t.clock_in AT TIME ZONE 'Asia/Manila') < CAST(:next_month AS DATE)
+         ORDER BY t.clock_in DESC
+         LIMIT :page_size OFFSET :offset"
+    );
+    $timeLogsStatement->bindValue(':user_id', (int) $selectedTimeStaff['user_id'], PDO::PARAM_INT);
+    $timeLogsStatement->bindValue(':month_start', $monthStartValue);
+    $timeLogsStatement->bindValue(':next_month', $nextMonthStartValue);
+    $timeLogsStatement->bindValue(':page_size', $timePageSize, PDO::PARAM_INT);
+    $timeLogsStatement->bindValue(':offset', ($timeCurrentPage - 1) * $timePageSize, PDO::PARAM_INT);
+    $timeLogsStatement->execute();
+    $timeLogs = $timeLogsStatement->fetchAll();
+
+    if ($isCurrentMonth) {
+        $attendanceStatement = db()->prepare(
+            "SELECT DISTINCT (clock_in AT TIME ZONE 'Asia/Manila')::DATE::TEXT AS attendance_date
+             FROM staff_time_log
+             WHERE user_id = :user_id
+               AND (clock_in AT TIME ZONE 'Asia/Manila') >= CAST(:month_start AS DATE)
+               AND (clock_in AT TIME ZONE 'Asia/Manila') < CAST(:next_month AS DATE)
+             ORDER BY attendance_date"
+        );
+    } else {
+        $attendanceStatement = db()->prepare(
+            "SELECT UNNEST(present_dates)::TEXT AS attendance_date
+             FROM staff_monthly_time_summary
+             WHERE user_id = :user_id AND month_start = CAST(:month_start AS DATE)
+             ORDER BY attendance_date"
+        );
+    }
+    $attendanceStatement->execute([
+        'user_id' => (int) $selectedTimeStaff['user_id'],
+        'month_start' => $monthStartValue,
+        ...($isCurrentMonth ? ['next_month' => $nextMonthStartValue] : []),
+    ]);
+    foreach ($attendanceStatement->fetchAll(PDO::FETCH_COLUMN) as $attendanceDate) {
+        $presentDates[] = (new DateTimeImmutable((string) $attendanceDate, $timeZone))->format('Y-m-d');
+    }
+
+    $today = new DateTimeImmutable('today', $timeZone);
+    $staffStartDate = new DateTimeImmutable(
+        (new DateTimeImmutable((string) $selectedTimeStaff['created_at']))->setTimezone($timeZone)->format('Y-m-d'),
+        $timeZone
+    );
+    $workdayStart = $staffStartDate > $monthStart ? $staffStartDate : $monthStart;
+    $workdayEnd = $isCurrentMonth && $today < $nextMonthStart
+        ? $today
+        : $nextMonthStart;
+    for ($workday = $workdayStart; $workday < $workdayEnd; $workday = $workday->modify('+1 day')) {
+        if ((int) $workday->format('N') <= 4) {
+            $workDate = $workday->format('Y-m-d');
+            $workDates[] = $workDate;
+            if (!in_array($workDate, $presentDates, true)) {
+                $absentDates[] = $workDate;
+            }
+        }
+    }
+}
+$timePageParameters = array_filter(
+    ['time_staff_id' => $timeStaffId, 'month' => $monthValue],
+    static fn (mixed $value): bool => $value !== null
 );
-$timeCountStatement->bindValue(':staff_id', $timeStaffId, $timeStaffId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
-$timeCountStatement->execute();
-$timeTotalRows = (int) $timeCountStatement->fetchColumn();
-$timeTotalPages = max(1, (int) ceil($timeTotalRows / $timePageSize));
-$timeCurrentPage = min($timeCurrentPage, $timeTotalPages);
-$timeLogsStatement = db()->prepare(
-    "SELECT t.clock_in AT TIME ZONE 'Asia/Manila' AS clock_in_local,
-            t.clock_out AT TIME ZONE 'Asia/Manila' AS clock_out_local,
-            COALESCE(
-                t.total_seconds,
-                FLOOR(EXTRACT(EPOCH FROM (
-                    COALESCE(
-                        t.clock_out,
-                        LEAST(CURRENT_TIMESTAMP, COALESCE(t.last_activity_at, t.clock_in) + INTERVAL '10 minutes')
-                    ) - t.clock_in
-                )))::INT
-            ) AS total_seconds,
-            s.first_name, s.last_name, s.position
-     FROM staff_time_log t
-     JOIN staff s ON s.user_id = t.user_id
-            WHERE s.staff_id = COALESCE(:staff_id, s.staff_id)
-     ORDER BY t.clock_in DESC
-     LIMIT :page_size OFFSET :offset"
-);
-$timeLogsStatement->bindValue(':staff_id', $timeStaffId, $timeStaffId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
-$timeLogsStatement->bindValue(':page_size', $timePageSize, PDO::PARAM_INT);
-$timeLogsStatement->bindValue(':offset', ($timeCurrentPage - 1) * $timePageSize, PDO::PARAM_INT);
-$timeLogsStatement->execute();
-$timeLogs = $timeLogsStatement->fetchAll();
-$timePageParameters = ['time_staff_id' => $timeStaffId];
-$philippineTimeZone = new DateTimeZone(APP_TIMEZONE);
+$philippineTimeZone = $timeZone;
 $pageParameters = array_filter([
     'search' => $search,
     'date_from' => $dateFrom,
@@ -185,13 +293,21 @@ $auditPageUrl = static fn (int $page): string => 'admin_audit.php?' . http_build
 $timePageUrl = static fn (int $page): string => 'admin_audit.php?' . http_build_query(
     $pageParameters + ['page' => $currentPage, 'time_page' => $page] + $timePageParameters
 );
+$monthLabel = $monthStart->format('F Y');
+$formatAttendanceDates = static function (array $dates) use ($timeZone): string {
+    return implode(', ', array_map(
+        static fn (string $date): string => (new DateTimeImmutable($date, $timeZone))->format('M j'),
+        $dates
+    ));
+};
 
 $pageTitle = 'Audit and time logs';
 require __DIR__ . '/includes/header.php';
 ?>
 <main class="dashboard-page staff-page"><aside class="dashboard-sidebar"><a class="dashboard-brand" href="staff_dashboard.php"><img src="assets/images/logo.png" alt="Barangay Inosluban logo"><span><strong>BARANGAY INOSLUBAN</strong><small>LIPA CITY, BATANGAS</small><small>Admin Portal</small></span></a><?php require __DIR__ . '/includes/staff_nav.php'; ?></aside><section class="dashboard-content"><div class="staff-main"><div class="staff-hero compact"><div><p class="eyebrow">SECURITY &amp; ACCOUNTABILITY</p><h1>Audit &amp; Time Logs</h1><p>Review staff attendance and every recorded processing action.</p></div></div>
+    <?php foreach ($errors as $error): ?><div class="alert alert-warning"><?= e($error) ?></div><?php endforeach; ?>
     <section class="staff-panel p-3 mb-3 admin-timesheet-panel">
-        <div class="admin-timesheet-heading"><div><h2 class="h5">Staff time sheets</h2><p>Choose a staff member to review their individual attendance record.</p></div></div>
+        <div class="admin-timesheet-heading"><div><h2 class="h5">Staff time sheets</h2><p>Monthly attendance and work time for <?= e($monthLabel) ?>. Completed months are archived for historical review.</p></div></div>
         <form method="get" class="audit-filters admin-timesheet-filter">
             <?php foreach (['search' => $search, 'date_from' => $dateFrom, 'date_to' => $dateTo] as $filterName => $filterValue): ?>
                 <?php if ($filterValue !== ''): ?><input type="hidden" name="<?= e($filterName) ?>" value="<?= e($filterValue) ?>"><?php endif; ?>
@@ -204,8 +320,11 @@ require __DIR__ . '/includes/header.php';
                     <?php endforeach; ?>
                 </select>
             </label>
+            <label for="time-month-filter">Month
+                <input class="form-control" id="time-month-filter" type="month" name="month" value="<?= e($monthValue) ?>" max="<?= e($currentMonthStart->format('Y-m')) ?>">
+            </label>
             <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> View time sheet</button>
-            <?php if ($timeStaffId !== null): ?><a class="btn btn-light" href="<?= e('admin_audit.php?' . http_build_query($pageParameters)) ?>">All staff</a><?php endif; ?>
+            <?php if ($timeStaffId !== null): ?><a class="btn btn-light" href="<?= e('admin_audit.php?' . http_build_query($pageParameters + ['month' => $monthValue])) ?>">All staff</a><?php endif; ?>
         </form>
 
         <?php if ($selectedTimeStaff === null): ?>
@@ -219,8 +338,8 @@ require __DIR__ . '/includes/header.php';
                     <article class="admin-timesheet-staff-card">
                         <span class="admin-timesheet-avatar"><?= e(strtoupper(substr($member['first_name'], 0, 1) . substr($member['last_name'], 0, 1))) ?></span>
                         <div class="admin-timesheet-staff-info"><strong><?= e($staffName) ?></strong><small><?= e($member['position'] ?: 'Staff') ?></small></div>
-                        <div class="admin-timesheet-staff-stats"><span><strong><?= number_format((int) $member['shifts']) ?></strong><small>shifts</small></span><span><strong><?= number_format($staffHours) ?>h <?= number_format($staffMinutes) ?>m</strong><small>total recorded</small></span><?php if ((int) $member['active_sessions'] > 0): ?><span class="admin-timesheet-active"><i class="bi bi-circle-fill"></i> Active now</span><?php endif; ?></div>
-                        <a class="btn btn-sm btn-outline-primary" href="<?= e('admin_audit.php?' . http_build_query($pageParameters + ['time_staff_id' => (int) $member['staff_id']])) ?>">Open time sheet <i class="bi bi-arrow-right"></i></a>
+                        <div class="admin-timesheet-staff-stats"><span><strong><?= number_format((int) $member['shifts']) ?></strong><small><?= e($monthLabel) ?> shifts</small></span><span><strong><?= number_format($staffHours) ?>h <?= number_format($staffMinutes) ?>m</strong><small><?= e($monthLabel) ?> total</small></span><?php if ((int) $member['active_sessions'] > 0): ?><span class="admin-timesheet-active"><i class="bi bi-circle-fill"></i> Active now</span><?php endif; ?></div>
+                        <a class="btn btn-sm btn-outline-primary" href="<?= e('admin_audit.php?' . http_build_query($pageParameters + ['time_staff_id' => (int) $member['staff_id'], 'month' => $monthValue])) ?>">Open time sheet <i class="bi bi-arrow-right"></i></a>
                     </article>
                 <?php endforeach; ?>
                 <?php if ($timeStaffMembers === []): ?><p class="analytics-empty">No staff accounts are available yet.</p><?php endif; ?>
@@ -228,8 +347,16 @@ require __DIR__ . '/includes/header.php';
         <?php else: ?>
             <div class="admin-timesheet-selected">
                 <span class="admin-timesheet-avatar"><?= e(strtoupper(substr($selectedTimeStaff['first_name'], 0, 1) . substr($selectedTimeStaff['last_name'], 0, 1))) ?></span>
-                <div><small>INDIVIDUAL TIME SHEET</small><h3><?= e(trim($selectedTimeStaff['first_name'] . ' ' . $selectedTimeStaff['last_name'])) ?></h3><span><?= e($selectedTimeStaff['position'] ?: 'Staff') ?> · <?= number_format((int) $selectedTimeStaff['shifts']) ?> shifts · <?= number_format(intdiv((int) $selectedTimeStaff['total_seconds'], 3600)) ?>h <?= number_format(intdiv((int) $selectedTimeStaff['total_seconds'] % 3600, 60)) ?>m total</span></div>
+                <div><small>INDIVIDUAL TIME SHEET · <?= e($monthLabel) ?></small><h3><?= e(trim($selectedTimeStaff['first_name'] . ' ' . $selectedTimeStaff['last_name'])) ?></h3><span><?= e($selectedTimeStaff['position'] ?: 'Staff') ?> · <?= number_format((int) $selectedTimeStaff['shifts']) ?> shifts · <?= number_format(intdiv((int) $selectedTimeStaff['total_seconds'], 3600)) ?>h <?= number_format(intdiv((int) $selectedTimeStaff['total_seconds'] % 3600, 60)) ?>m total</span></div>
             </div>
+            <section class="admin-attendance-summary" aria-label="Monthly attendance summary">
+                <div class="admin-attendance-stat"><small>Work time</small><strong><?= number_format(intdiv((int) $selectedTimeStaff['total_seconds'], 3600)) ?>h <?= number_format(intdiv((int) $selectedTimeStaff['total_seconds'] % 3600, 60)) ?>m</strong></div>
+                <div class="admin-attendance-stat"><small>Shifts</small><strong><?= number_format((int) $selectedTimeStaff['shifts']) ?></strong></div>
+                <div class="admin-attendance-stat"><small>Present workdays</small><strong><?= number_format(count(array_intersect($presentDates, $workDates))) ?></strong></div>
+                <div class="admin-attendance-stat"><small>Potential absences</small><strong><?= number_format(count($absentDates)) ?></strong></div>
+                <div class="admin-attendance-dates"><div><h4>Present dates</h4><p><?= $presentDates === [] ? 'No attendance recorded.' : e($formatAttendanceDates($presentDates)) ?></p></div><div><h4>Potential absences</h4><p><?= $workDates === [] ? 'No completed Monday–Thursday workdays to report yet.' : ($absentDates === [] ? 'No Monday–Thursday dates without a clock-in.' : e($formatAttendanceDates($absentDates))) ?></p></div></div>
+                <p class="admin-attendance-note">Absences are inferred from Monday–Thursday dates with no clock-in. Approved leave and holidays are not available in the attendance records.</p>
+            </section>
             <div class="table-responsive"><table class="staff-table admin-timesheet-table"><thead><tr><th>Work date</th><th>Clock in</th><th>Clock out</th><th>Time worked</th><th>Session</th></tr></thead><tbody>
                 <?php foreach ($timeLogs as $log): ?>
                     <?php
@@ -240,14 +367,15 @@ require __DIR__ . '/includes/header.php';
                 <?php endforeach; ?>
                 <?php if ($timeLogs === []): ?><tr><td colspan="5">No time-sheet entries found for this staff member.</td></tr><?php endif; ?>
             </tbody></table></div>
-            <nav class="request-pagination" aria-label="Staff time sheet pages"><span>Showing <?= $timeTotalRows === 0 ? 0 : (($timeCurrentPage - 1) * $timePageSize + 1) ?>–<?= min($timeCurrentPage * $timePageSize, $timeTotalRows) ?> of <?= $timeTotalRows ?> shifts</span><div><?php if ($timeCurrentPage > 1): ?><a class="btn btn-sm btn-outline-primary" href="<?= e($timePageUrl($timeCurrentPage - 1)) ?>">Previous</a><?php endif; ?><span>Page <?= $timeCurrentPage ?> of <?= $timeTotalPages ?></span><?php if ($timeCurrentPage < $timeTotalPages): ?><a class="btn btn-sm btn-outline-primary" href="<?= e($timePageUrl($timeCurrentPage + 1)) ?>">Next</a><?php endif; ?></div></nav>
+            <nav class="request-pagination" aria-label="Staff time sheet pages"><span>Showing <?= $timeTotalRows === 0 ? 0 : (($timeCurrentPage - 1) * $timePageSize + 1) ?>–<?= min($timeCurrentPage * $timePageSize, $timeTotalRows) ?> of <?= $timeTotalRows ?> shifts for <?= e($monthLabel) ?></span><div><?php if ($timeCurrentPage > 1): ?><a class="btn btn-sm btn-outline-primary" href="<?= e($timePageUrl($timeCurrentPage - 1)) ?>">Previous</a><?php endif; ?><span>Page <?= $timeCurrentPage ?> of <?= $timeTotalPages ?></span><?php if ($timeCurrentPage < $timeTotalPages): ?><a class="btn btn-sm btn-outline-primary" href="<?= e($timePageUrl($timeCurrentPage + 1)) ?>">Next</a><?php endif; ?></div></nav>
         <?php endif; ?>
     </section>
+    <?php if ($selectedTimeStaff === null): ?>
     <section class="staff-panel p-3"><h2 class="h5">Processing audit trail</h2><form method="get" class="audit-filters"><input type="hidden" name="time_page" value="<?= $timeCurrentPage ?>"><?php if ($timeStaffId !== null): ?><input type="hidden" name="time_staff_id" value="<?= $timeStaffId ?>"><?php endif; ?><label class="audit-search-field" for="audit-search">Search time, actor, user ID, log ID, action, record, table, or details<input id="audit-search" class="form-control" type="search" name="search" maxlength="150" value="<?= e($search) ?>" placeholder="e.g. staff name, REQUEST_STATUS_UPDATED, #24"></label><label for="audit-from">From (Philippine date)<input id="audit-from" class="form-control" type="date" name="date_from" value="<?= e($dateFrom) ?>"></label><label for="audit-to">To (Philippine date)<input id="audit-to" class="form-control" type="date" name="date_to" value="<?= e($dateTo) ?>"></label><button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Search logs</button><a class="btn btn-light" href="admin_audit.php">Clear</a></form>
-        <?php foreach ($errors as $error): ?><div class="alert alert-warning"><?= e($error) ?></div><?php endforeach; ?>
         <p class="audit-results-count"><?= $totalRows ?> matching log<?= $totalRows === 1 ? '' : 's' ?> · newest first</p>
         <div class="table-responsive"><table class="staff-table"><thead><tr><th>Log #</th><th>Time (Philippine Time)</th><th>Actor</th><th>Action</th><th>Record</th><th>Details</th></tr></thead><tbody><?php foreach ($auditLogs as $log): ?><tr><td>#<?= (int) $log['audit_id'] ?></td><td><?= e((new DateTimeImmutable((string) $log['action_timestamp_local'], $philippineTimeZone))->format('M j, Y g:i:s A')) ?></td><td><?= e($log['actor']) ?></td><td><?= e($log['action']) ?></td><td><?= e(($log['affected_table'] ?? 'record') . ' #' . ($log['affected_record_id'] ?? '')) ?></td><td><?= e((string) json_encode($log['details'])) ?></td></tr><?php endforeach; ?><?php if ($auditLogs === []): ?><tr><td colspan="6">No audit entries match these filters.</td></tr><?php endif; ?></tbody></table></div>
         <nav class="request-pagination" aria-label="Audit log pages"><span>Showing <?= $totalRows === 0 ? 0 : (($currentPage - 1) * $pageSize + 1) ?>–<?= min($currentPage * $pageSize, $totalRows) ?> of <?= $totalRows ?></span><div><?php if ($currentPage > 1): ?><a class="btn btn-sm btn-outline-primary" href="<?= e($auditPageUrl($currentPage - 1)) ?>">Previous</a><?php endif; ?><span>Page <?= $currentPage ?> of <?= $totalPages ?></span><?php if ($currentPage < $totalPages): ?><a class="btn btn-sm btn-outline-primary" href="<?= e($auditPageUrl($currentPage + 1)) ?>">Next</a><?php endif; ?></div></nav>
     </section>
+    <?php endif; ?>
 </div></section></main>
 <?php require __DIR__ . '/includes/footer.php'; ?>

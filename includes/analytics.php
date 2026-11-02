@@ -285,7 +285,10 @@ function admin_analytics_data(): array
          FROM staff s
          LEFT JOIN staff_time_log t
            ON t.user_id = s.user_id
-          AND t.clock_in >= DATE_TRUNC('month', CURRENT_DATE)
+          AND t.clock_in >= DATE_TRUNC(
+              'month',
+              CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila'
+          ) AT TIME ZONE 'Asia/Manila'
          WHERE s.employment_status = 'Active'
          GROUP BY s.staff_id, s.first_name, s.last_name, s.position
          ORDER BY total_seconds DESC, staff_name
