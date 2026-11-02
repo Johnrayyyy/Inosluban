@@ -4,6 +4,46 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/bootstrap.php';
 require_resident();
 
+$officialGroups = [
+    [
+        'title' => 'Barangay Leadership',
+        'icon' => 'bi-person-badge',
+        'officials' => [
+            ['Punong Barangay', 'Hon. Miguel L. Olgado'],
+        ],
+    ],
+    [
+        'title' => 'Barangay Kagawad',
+        'icon' => 'bi-people',
+        'officials' => [
+            ['Kagawad', 'Hon. Merlita P. Garcia'],
+            ['Kagawad', 'Hon. Elena B. Aguilera'],
+            ['Kagawad', 'Hon. Felix A. Magcawas'],
+            ['Kagawad', 'Hon. Jericho Dumlao'],
+            ['Kagawad', 'Hon. Omar M. Cabrera'],
+            ['Kagawad', 'Hon. Nestor Balita'],
+        ],
+    ],
+    [
+        'title' => 'Sangguniang Kabataan',
+        'icon' => 'bi-person-hearts',
+        'officials' => [
+            ['SK Chairperson', 'Hon. Ashlie Nicole Gonzales'],
+            ['SK Kagawad', 'Faye Abueg'],
+            ['SK Kagawad', 'Gemma Marquez'],
+            ['SK Kagawad', 'Jean Michelle Maoirat'],
+            ['SK Kagawad', 'Lawrence Macahia'],
+            ['SK Kagawad', 'Gian Carlo Barairo'],
+            ['SK Kagawad', 'Mylene Joycee Calise'],
+        ],
+    ],
+];
+$developers = [
+    'Mitra, John Ray I.',
+    'Lana, Patrick Jerald O.',
+    'Maralit, Ben Jairo A.',
+];
+
 $pageTitle = 'Contact the barangay office';
 require __DIR__ . '/includes/header.php';
 ?>
@@ -41,6 +81,29 @@ require __DIR__ . '/includes/header.php';
                     <span class="resident-contact-detail"><small>EMAIL</small><strong>inosluban2014@gmail.com</strong><em>Send your inquiry directly to the barangay office.</em></span>
                     <i class="bi bi-arrow-up-right resident-contact-arrow"></i>
                 </a>
+            </section>
+            <section class="resident-officials-section" aria-labelledby="resident-officials-title">
+                <div class="resident-officials-heading">
+                    <p class="eyebrow">YOUR COMMUNITY REPRESENTATIVES</p>
+                    <h2 id="resident-officials-title">Barangay Officials</h2>
+                    <p>Meet the officials serving Barangay Inosluban.</p>
+                </div>
+                <div class="resident-officials-grid">
+                    <?php foreach ($officialGroups as $group): ?>
+                        <article class="resident-official-group">
+                            <header><span><i class="bi <?= e($group['icon']) ?>"></i></span><h3><?= e($group['title']) ?></h3></header>
+                            <ul>
+                                <?php foreach ($group['officials'] as [$position, $name]): ?>
+                                    <li><span><?= e($position) ?></span><strong><?= e($name) ?></strong></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+            <section class="resident-developers" aria-labelledby="resident-developers-title">
+                <div><p class="eyebrow">PORTAL CREDITS</p><h2 id="resident-developers-title">Developed by</h2></div>
+                <ul><?php foreach ($developers as $developer): ?><li><?= e($developer) ?></li><?php endforeach; ?></ul>
             </section>
             <p class="resident-contact-note"><i class="bi bi-info-circle"></i> Please avoid sending passwords or sensitive account information through social media or email.</p>
             <a class="resident-contact-back" href="dashboard.php"><i class="bi bi-arrow-left"></i> Back to resident dashboard</a>

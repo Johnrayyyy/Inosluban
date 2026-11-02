@@ -314,6 +314,24 @@ body.hide-site-footer > .site-footer { display: none; }
 .resident-contact-detail strong { overflow-wrap: anywhere; color: white; font-size: .82rem; }
 .resident-contact-detail em { color: rgba(255,255,255,.72); font-size: .62rem; font-style: normal; line-height: 1.45; }
 .resident-contact-arrow { align-self: start; color: rgba(255,255,255,.7); }
+.resident-officials-section { margin-top: 1.8rem; }
+.resident-officials-heading { margin-bottom: .8rem; }
+.resident-officials-heading .eyebrow, .resident-developers .eyebrow { margin-bottom: .25rem; color: #ffd978; font-size: .58rem; }
+.resident-officials-heading h2, .resident-developers h2 { margin: 0; color: white; font-size: 1.1rem; font-weight: 800; }
+.resident-officials-heading > p:last-child { margin: .25rem 0 0; color: rgba(255,255,255,.7); font-size: .67rem; }
+.resident-officials-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.resident-official-group { overflow: hidden; border: 1px solid rgba(255,255,255,.22); border-radius: .8rem; background: linear-gradient(145deg, rgba(255,255,255,.15), rgba(255,255,255,.07)); box-shadow: 0 10px 24px rgba(0,0,0,.1); }
+.resident-official-group > header { display: flex; align-items: center; gap: .55rem; padding: .75rem .8rem; border-bottom: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); }
+.resident-official-group > header > span { display: grid; width: 1.8rem; height: 1.8rem; place-items: center; border-radius: .55rem; background: rgba(233,173,37,.18); color: #ffda7c; }
+.resident-official-group h3 { margin: 0; color: white; font-size: .7rem; font-weight: 750; }
+.resident-official-group ul, .resident-developers ul { display: grid; gap: .3rem; margin: 0; padding: .65rem .8rem; list-style: none; }
+.resident-official-group li { display: grid; gap: .08rem; padding: .4rem .45rem; border-radius: .4rem; background: rgba(0,0,0,.12); }
+.resident-official-group li span { color: rgba(255,255,255,.65); font-size: .52rem; }
+.resident-official-group li strong { color: white; font-size: .63rem; font-weight: 700; }
+.resident-developers { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: .8rem; padding: .75rem .9rem; border: 1px solid rgba(255,255,255,.18); border-radius: .75rem; background: rgba(0,0,0,.15); }
+.resident-developers h2 { font-size: .78rem; }
+.resident-developers ul { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; padding: 0; }
+.resident-developers li { padding: .35rem .5rem; border: 1px solid rgba(255,255,255,.16); border-radius: 99px; color: rgba(255,255,255,.84); font-size: .55rem; }
 .resident-contact-note { display: flex; align-items: flex-start; gap: .4rem; margin: 1rem 0; color: rgba(255,255,255,.68); font-size: .63rem; }
 .resident-contact-note i { color: #ffd978; }
 .resident-contact-back { display: inline-flex; align-items: center; gap: .4rem; margin-top: .35rem; color: white; font-size: .67rem; }
@@ -505,6 +523,9 @@ body.hide-site-footer > .site-footer { display: none; }
     .dashboard-footer-social { margin-left: 0; }
     .dashboard-footer small { width: 100%; text-align: center; }
     .resident-contact-grid { grid-template-columns: minmax(0, 1fr); }
+    .resident-officials-grid { grid-template-columns: minmax(0, 1fr); }
+    .resident-developers { align-items: flex-start; flex-direction: column; }
+    .resident-developers ul { justify-content: flex-start; }
     .dashboard-service-grid, .dashboard-lower-grid { grid-template-columns: 1fr; }
     .portal-panel { grid-column: auto; }
     .request-fields { grid-template-columns: 1fr; }
