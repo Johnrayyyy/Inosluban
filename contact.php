@@ -39,9 +39,9 @@ $officialGroups = [
     ],
 ];
 $developers = [
-    'Mitra, John Ray I.',
     'Lana, Patrick Jerald O.',
     'Maralit, Ben Jairo A.',
+    'Mitra, John Ray I.',
 ];
 
 $pageTitle = 'Contact the barangay office';
