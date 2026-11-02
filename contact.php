@@ -94,6 +94,7 @@ require __DIR__ . '/includes/header.php';
                             <header><span><i class="bi <?= e($group['icon']) ?>"></i></span><h3><?= e($group['title']) ?></h3></header>
                             <p class="resident-official-tagline"><?= e($group['tagline']) ?></p>
                             <div class="resident-official-featured">
+                                <span class="resident-official-photo-placeholder" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
                                 <span><?= e($group['leader_role']) ?></span>
                                 <strong><?= e($group['leader_name']) ?></strong>
                             </div>
@@ -101,6 +102,7 @@ require __DIR__ . '/includes/header.php';
                             <div class="resident-official-members">
                                 <?php foreach ($group['members'] as $member): ?>
                                     <article class="resident-official-member">
+                                        <span class="resident-official-member-photo" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
                                         <strong><?= e($member) ?></strong>
                                         <span><?= e($group['member_role']) ?></span>
                                     </article>
@@ -114,6 +116,7 @@ require __DIR__ . '/includes/header.php';
                         <div class="resident-developer-cards">
                             <?php foreach ($developers as $developer): ?>
                                 <article class="resident-developer-card">
+                                    <span class="resident-developer-photo" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
                                     <strong><?= e($developer) ?></strong>
                                     <span>Developer</span>
                                 </article>
