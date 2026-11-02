@@ -79,7 +79,7 @@ require __DIR__ . '/includes/header.php';
                 <small>A faster, easier, and more convenient way to access barangay services.</small>
                 <div class="dashboard-tagline">Mas Maayos na Serbisyo,<br>para sa ating Barangay.</div>
             </div>
-            <div class="dashboard-section-heading"><h2>Barangay Services</h2><a href="#services">View all <i class="bi bi-arrow-right"></i></a></div>
+            <div class="dashboard-section-heading"><h2>Barangay Services</h2></div>
             <div class="dashboard-service-grid" id="services">
                 <a class="dashboard-service-card" href="document_request.php"><i class="bi bi-file-earmark-text"></i><h3>Request Document</h3><p>Apply for barangay clearance, certificates, and other documents.</p><span>Go to Request <i class="bi bi-arrow-right"></i></span></a>
                 <a class="dashboard-service-card" href="blotter.php"><i class="bi bi-shield-check"></i><h3>Blotter</h3><p>Report incidents, concerns, or request assistance.</p><span>Go to Blotter <i class="bi bi-arrow-right"></i></span></a>
