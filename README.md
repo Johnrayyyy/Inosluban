@@ -117,6 +117,9 @@ pending announcement drafts; only an admin can approve and publish or dismiss
 those drafts from Manage Announcements.
 The admin Dashboard route opens `admin_analytics.php`. The analytics page
 summarizes service, weather-advisory, alert, notification, and staff-time data.
+Its monthly activity chart compares document requests, blotter reports, and
+appointment submissions. Staff time logs use activity heartbeats and stop
+counting after ten minutes without activity; logging out closes the active log.
 Hourly weather refreshes are also recorded as observations, with recent saved
 advisories imported as initial history for the weather trend.
 Its AI outlook sends only aggregated metrics and the latest weather forecast to

@@ -6,6 +6,9 @@
 </footer>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <?php if (function_exists('is_logged_in') && is_logged_in()): ?>
+<?php if (($_SESSION['user']['role'] ?? '') === 'staff' && !empty($_SESSION['staff_time_log_id'])): ?>
+<span hidden data-staff-time-heartbeat data-csrf-token="<?= e(csrf_token()) ?>" data-server-now="<?= e((string) time()) ?>"></span>
+<?php endif; ?>
 <button class="ai-chat-launcher" type="button" data-ai-chat-open aria-label="Open barangay AI assistant"><i class="bi bi-stars"></i></button>
 <div class="ai-chat-backdrop" data-ai-chat-backdrop aria-hidden="true"></div>
 <section class="ai-chat-widget" data-ai-chat aria-hidden="true">

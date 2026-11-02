@@ -447,6 +447,7 @@ CREATE TABLE staff_time_log (
     user_id INT NOT NULL REFERENCES user_account(user_id) ON DELETE CASCADE,
     clock_in TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     clock_out TIMESTAMPTZ,
+    last_activity_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     total_seconds INT,
     CHECK (clock_out IS NULL OR clock_out >= clock_in)
 );

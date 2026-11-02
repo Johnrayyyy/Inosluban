@@ -13,9 +13,28 @@ function ensure_staff_tables(): void
             user_id INT NOT NULL REFERENCES user_account(user_id) ON DELETE CASCADE,
             clock_in TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
             clock_out TIMESTAMPTZ,
+            last_activity_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
             total_seconds INT,
             CHECK (clock_out IS NULL OR clock_out >= clock_in)
         )"
+    );
+    db()->exec('ALTER TABLE staff_time_log ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ');
+    db()->exec(
+        'UPDATE staff_time_log
+         SET last_activity_at = COALESCE(clock_out, clock_in)
+         WHERE last_activity_at IS NULL'
+    );
+    db()->exec('ALTER TABLE staff_time_log ALTER COLUMN last_activity_at SET DEFAULT CURRENT_TIMESTAMP');
+    db()->exec('ALTER TABLE staff_time_log ALTER COLUMN last_activity_at SET NOT NULL');
+    db()->exec(
+        "UPDATE staff_time_log
+         SET clock_out = last_activity_at + INTERVAL '10 minutes',
+             total_seconds = GREATEST(
+                 0,
+                 FLOOR(EXTRACT(EPOCH FROM (last_activity_at + INTERVAL '10 minutes' - clock_in)))::INT
+             )
+         WHERE clock_out IS NULL
+           AND last_activity_at < CURRENT_TIMESTAMP - INTERVAL '10 minutes'"
     );
 }
 
@@ -65,8 +84,13 @@ function staff_start_time_log(int $userId): array
     try {
         $closePrevious = $pdo->prepare(
             'UPDATE staff_time_log
-             SET clock_out = CURRENT_TIMESTAMP,
-                 total_seconds = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - clock_in)))::INT)
+             SET clock_out = LEAST(CURRENT_TIMESTAMP, last_activity_at + INTERVAL \'10 minutes\'),
+                 total_seconds = GREATEST(
+                     0,
+                     FLOOR(EXTRACT(EPOCH FROM (
+                         LEAST(CURRENT_TIMESTAMP, last_activity_at + INTERVAL \'10 minutes\') - clock_in
+                     )))::INT
+                 )
              WHERE user_id = :user_id AND clock_out IS NULL'
         );
         $closePrevious->execute(['user_id' => $userId]);
@@ -103,12 +127,29 @@ function staff_get_time_log(int $timeLogId, int $userId): ?array
     return $timeLog ?: null;
 }
 
+function staff_touch_time_log(int $timeLogId, int $userId): bool
+{
+    ensure_staff_tables();
+    $statement = db()->prepare(
+        'UPDATE staff_time_log
+         SET last_activity_at = CURRENT_TIMESTAMP
+         WHERE time_log_id = :time_log_id
+           AND user_id = :user_id
+           AND clock_out IS NULL
+           AND last_activity_at >= CURRENT_TIMESTAMP - INTERVAL \'10 minutes\''
+    );
+    $statement->execute(['time_log_id' => $timeLogId, 'user_id' => $userId]);
+
+    return $statement->rowCount() === 1;
+}
+
 function staff_clock_out(int $timeLogId, int $userId): void
 {
     ensure_staff_tables();
     $statement = db()->prepare(
         'UPDATE staff_time_log
          SET clock_out = CURRENT_TIMESTAMP,
+             last_activity_at = CURRENT_TIMESTAMP,
              total_seconds = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - clock_in)))::INT)
          WHERE time_log_id = :time_log_id
            AND user_id = :user_id

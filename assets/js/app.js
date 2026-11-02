@@ -117,6 +117,61 @@ if (requestModule && themeToggle) {
 }
 
 const staffTimer = document.querySelector('[data-staff-timer]');
+const staffTimeHeartbeat = document.querySelector('[data-staff-time-heartbeat]');
+let staffHeartbeatServerNow = staffTimeHeartbeat ? Number(staffTimeHeartbeat.dataset.serverNow) : 0;
+let staffHeartbeatAt = performance.now();
+if (staffTimeHeartbeat) {
+    let lastStaffActivity = Date.now();
+    let heartbeatInProgress = false;
+    const noteStaffActivity = () => {
+        lastStaffActivity = Date.now();
+    };
+    ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach((eventName) => {
+        document.addEventListener(eventName, noteStaffActivity, { passive: true });
+    });
+    const sendStaffHeartbeat = async () => {
+        if (
+            heartbeatInProgress
+            || document.visibilityState !== 'visible'
+            || Date.now() - lastStaffActivity > 60 * 1000
+        ) {
+            return;
+        }
+        heartbeatInProgress = true;
+        const formData = new FormData();
+        formData.set('csrf_token', staffTimeHeartbeat.dataset.csrfToken || '');
+        try {
+            const response = await fetch('staff_time_heartbeat.php', {
+                method: 'POST',
+                body: formData,
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || `Time tracking returned HTTP ${response.status}`);
+            }
+            if (!result.active) {
+                window.location.replace('logout.php');
+                return;
+            }
+            staffHeartbeatServerNow = Number(result.server_now);
+            staffHeartbeatAt = performance.now();
+        } catch (error) {
+            console.error('Staff time heartbeat failed:', error);
+        } finally {
+            heartbeatInProgress = false;
+        }
+    };
+    sendStaffHeartbeat();
+    window.setInterval(sendStaffHeartbeat, 30 * 1000);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            noteStaffActivity();
+            sendStaffHeartbeat();
+        }
+    });
+}
 if (staffTimer) {
     const clockIn = Number(staffTimer.dataset.clockIn);
     const serverNow = Number(staffTimer.dataset.serverNow);
@@ -127,9 +182,16 @@ if (staffTimer) {
             staffTimer.textContent = '--:--:--';
             return;
         }
-        const now = serverNow + (performance.now() - startedAt) / 1000;
+        const performanceNow = performance.now();
+        const now = serverNow + (performanceNow - startedAt) / 1000;
+        const heartbeatDeadline = staffTimeHeartbeat
+            ? staffHeartbeatServerNow + (performanceNow - staffHeartbeatAt) / 1000 + 600
+            : now;
         const currentDayStart = dayStart + Math.floor((now - dayStart) / 86400) * 86400;
-        const elapsed = Math.floor(Math.max(0, now - Math.max(clockIn, currentDayStart)));
+        const elapsed = Math.floor(Math.max(
+            0,
+            Math.min(now, heartbeatDeadline) - Math.max(clockIn, currentDayStart),
+        ));
         const hours = String(Math.floor(elapsed / 3600)).padStart(2, '0');
         const minutes = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
         const seconds = String(elapsed % 60).padStart(2, '0');

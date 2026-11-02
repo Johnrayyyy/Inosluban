@@ -36,13 +36,30 @@ function admin_analytics_data(): array
          GROUP BY status
          ORDER BY request_count DESC, status'
     )->fetchAll();
-    $monthlyDocuments = $pdo->query(
-        "SELECT TO_CHAR(DATE_TRUNC('month', request_date), 'YYYY-MM') AS month_key,
-                COUNT(*) AS request_count
-         FROM document_request
-         WHERE request_date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
-         GROUP BY DATE_TRUNC('month', request_date)
-         ORDER BY DATE_TRUNC('month', request_date)"
+    $monthlyActivity = $pdo->query(
+        "SELECT TO_CHAR(activity_month, 'YYYY-MM') AS month_key,
+                SUM(document_count) AS document_count,
+                SUM(blotter_count) AS blotter_count,
+                SUM(appointment_count) AS appointment_count
+         FROM (
+             SELECT DATE_TRUNC('month', request_date) AS activity_month,
+                    COUNT(*) AS document_count, 0 AS blotter_count, 0 AS appointment_count
+             FROM document_request
+             WHERE request_date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
+             GROUP BY DATE_TRUNC('month', request_date)
+             UNION ALL
+             SELECT DATE_TRUNC('month', report_date), 0, COUNT(*), 0
+             FROM blotter
+             WHERE report_date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
+             GROUP BY DATE_TRUNC('month', report_date)
+             UNION ALL
+             SELECT DATE_TRUNC('month', created_at), 0, 0, COUNT(*)
+             FROM appointment
+             WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
+             GROUP BY DATE_TRUNC('month', created_at)
+         ) activity
+         GROUP BY activity_month
+         ORDER BY activity_month"
     )->fetchAll();
     $weekdayDocuments = $pdo->query(
         "SELECT EXTRACT(ISODOW FROM request_date)::INT AS weekday_number,
@@ -124,7 +141,12 @@ function admin_analytics_data(): array
                 COUNT(t.time_log_id) AS shifts,
                 COALESCE(SUM(COALESCE(
                     t.total_seconds,
-                    FLOOR(EXTRACT(EPOCH FROM (COALESCE(t.clock_out, CURRENT_TIMESTAMP) - t.clock_in)))::INT
+                    FLOOR(EXTRACT(EPOCH FROM (
+                        COALESCE(
+                            t.clock_out,
+                            LEAST(CURRENT_TIMESTAMP, COALESCE(t.last_activity_at, t.clock_in) + INTERVAL '10 minutes')
+                        ) - t.clock_in
+                    )))::INT
                 )), 0) AS total_seconds
          FROM staff s
          LEFT JOIN staff_time_log t
@@ -137,18 +159,31 @@ function admin_analytics_data(): array
     )->fetchAll();
 
     $monthlyMap = [];
-    foreach ($monthlyDocuments as $row) {
-        $monthlyMap[$row['month_key']] = (int) $row['request_count'];
+    foreach ($monthlyActivity as $row) {
+        $monthlyMap[$row['month_key']] = [
+            'documents' => (int) $row['document_count'],
+            'blotter' => (int) $row['blotter_count'],
+            'appointments' => (int) $row['appointment_count'],
+        ];
     }
     $months = [];
+    $activityMonths = [];
     $today = new DateTimeImmutable('first day of this month', new DateTimeZone(APP_TIMEZONE));
     for ($offset = 11; $offset >= 0; $offset--) {
         $month = $today->modify("-{$offset} months");
         $key = $month->format('Y-m');
+        $activity = $monthlyMap[$key] ?? ['documents' => 0, 'blotter' => 0, 'appointments' => 0];
         $months[] = [
             'key' => $key,
             'label' => $month->format('M'),
-            'count' => $monthlyMap[$key] ?? 0,
+            'count' => $activity['documents'],
+        ];
+        $activityMonths[] = [
+            'key' => $key,
+            'label' => $month->format('M'),
+            'count' => $activity['documents'],
+            'blotter_count' => $activity['blotter'],
+            'appointment_count' => $activity['appointments'],
         ];
     }
 
@@ -183,6 +218,7 @@ function admin_analytics_data(): array
             $documentStatuses
         ),
         'monthly_documents' => $months,
+        'monthly_activity' => $activityMonths,
         'weekday_documents' => $weekdays,
         'appointment_status' => array_map(
             static fn (array $row): array => ['label' => (string) $row['status'], 'count' => (int) $row['item_count']],

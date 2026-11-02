@@ -10,6 +10,7 @@ require_once __DIR__ . '/includes/phil_sms.php';
 
 require_admin();
 ensure_admin_schema();
+ensure_staff_tables();
 $refreshWeatherOnLogin = !empty($_SESSION['weather_refresh_on_login']);
 unset($_SESSION['weather_refresh_on_login']);
 
@@ -174,8 +175,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $analytics = admin_analytics_data();
 $overview = $analytics['overview'];
-$monthCounts = array_column($analytics['monthly_documents'], 'count');
-$maxMonthCount = max(1, ...$monthCounts);
+$activitySeries = [
+    ['key' => 'count', 'label' => 'Document Requests', 'color' => '#8f002d'],
+    ['key' => 'blotter_count', 'label' => 'Blotter Cases', 'color' => '#f27f99'],
+    ['key' => 'appointment_count', 'label' => 'Appointments', 'color' => '#f5bdcc'],
+];
+$maxActivityCount = max(1, ...array_map(
+    static fn (array $month): int => max($month['count'], $month['blotter_count'], $month['appointment_count']),
+    $analytics['monthly_activity']
+));
+$rawActivityStep = $maxActivityCount / 4;
+$activityMagnitude = 10 ** floor(log10($rawActivityStep));
+$activityStepScale = $rawActivityStep / $activityMagnitude;
+$activityStep = max(1, ($activityStepScale <= 1 ? 1 : ($activityStepScale <= 2 ? 2 : ($activityStepScale <= 5 ? 5 : 10))) * $activityMagnitude);
+$activityAxisMax = max($activityStep, ceil($maxActivityCount / $activityStep) * $activityStep);
+$activityChart = ['left' => 72, 'right' => 784, 'top' => 18, 'bottom' => 188];
+$activityChart['height'] = $activityChart['bottom'] - $activityChart['top'];
+$activityChart['width'] = $activityChart['right'] - $activityChart['left'];
+$activityChartLines = [];
+foreach ($activitySeries as $series) {
+    $points = [];
+    foreach ($analytics['monthly_activity'] as $index => $month) {
+        $x = $activityChart['left'] + $index * $activityChart['width'] / max(1, count($analytics['monthly_activity']) - 1);
+        $y = $activityChart['bottom'] - $month[$series['key']] / $activityAxisMax * $activityChart['height'];
+        $points[] = ['x' => round($x, 1), 'y' => round($y, 1)];
+    }
+    $activityChartLines[] = ['series' => $series, 'points' => $points];
+}
 $maxWeekdayCount = max(1, ...array_column($analytics['weekday_documents'], 'count'));
 $maxDocumentTypeCount = max(1, ...array_column($analytics['document_types'], 'count'));
 $maxWeatherTemperature = max(1, ...array_map(
@@ -233,12 +259,24 @@ require __DIR__ . '/includes/header.php';
 
             <div class="analytics-chart-grid">
                 <section class="analytics-panel analytics-month-chart">
-                    <div class="analytics-panel-heading"><span class="analytics-panel-icon analytics-doc-icon"><i class="bi bi-graph-up-arrow"></i></span><div><h2>Document request trend</h2><p>Requests received by month · last 12 months</p></div></div>
-                    <div class="analytics-month-bars" role="img" aria-label="Monthly document request counts">
-                        <?php foreach ($analytics['monthly_documents'] as $month): ?>
-                            <?php $barHeight = $month['count'] === 0 ? 2 : max(8, (int) round($month['count'] / $maxMonthCount * 100)); ?>
-                            <div class="analytics-month-bar"><span class="analytics-bar-value"><?= $month['count'] > 0 ? number_format($month['count']) : '' ?></span><div class="analytics-bar-track"><span style="height: <?= $barHeight ?>%"></span></div><small><?= e($month['label']) ?></small></div>
-                        <?php endforeach; ?>
+                    <div class="analytics-panel-heading"><span class="analytics-panel-icon analytics-doc-icon"><i class="bi bi-graph-up-arrow"></i></span><div><h2>Monthly Activity Trend</h2><p>Requests and reports received by month · last 12 months</p></div></div>
+                    <div class="analytics-activity-legend" aria-hidden="true"><?php foreach ($activitySeries as $series): ?><span><i style="--series-color: <?= e($series['color']) ?>"></i><?= e($series['label']) ?></span><?php endforeach; ?></div>
+                    <div class="analytics-activity-chart">
+                        <svg viewBox="0 0 800 232" role="img" aria-label="Monthly activity trend comparing document requests, blotter cases, and appointments over the last 12 months">
+                            <?php for ($tick = 0; $tick <= 4; $tick++): ?>
+                                <?php $tickValue = $activityAxisMax * $tick / 4; $tickY = $activityChart['bottom'] - $activityChart['height'] * $tick / 4; ?>
+                                <line x1="<?= $activityChart['left'] ?>" y1="<?= round($tickY, 1) ?>" x2="<?= $activityChart['right'] ?>" y2="<?= round($tickY, 1) ?>" class="analytics-activity-gridline"/>
+                                <text x="<?= $activityChart['left'] - 12 ?>" y="<?= round($tickY + 4, 1) ?>" class="analytics-activity-axis-label" text-anchor="end"><?= number_format($tickValue, $activityAxisMax < 5 ? 1 : 0) ?></text>
+                            <?php endfor; ?>
+                            <?php foreach ($analytics['monthly_activity'] as $index => $month): ?>
+                                <?php $monthX = $activityChart['left'] + $index * $activityChart['width'] / max(1, count($analytics['monthly_activity']) - 1); ?>
+                                <text x="<?= round($monthX, 1) ?>" y="215" class="analytics-activity-month-label" text-anchor="middle"><?= e($month['label']) ?></text>
+                            <?php endforeach; ?>
+                            <?php foreach ($activityChartLines as $line): ?>
+                                <polyline points="<?= e(implode(' ', array_map(static fn (array $point): string => $point['x'] . ',' . $point['y'], $line['points']))) ?>" fill="none" stroke="<?= e($line['series']['color']) ?>" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                                <?php foreach ($line['points'] as $point): ?><circle cx="<?= $point['x'] ?>" cy="<?= $point['y'] ?>" r="3.5" fill="<?= e($line['series']['color']) ?>"/><?php endforeach; ?>
+                            <?php endforeach; ?>
+                        </svg>
                     </div>
                 </section>
 

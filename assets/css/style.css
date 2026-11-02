@@ -1183,12 +1183,13 @@ body.hide-site-footer > .site-footer { display: none; }
 .analytics-ai-placeholder { display: flex; gap: .4rem; margin: .75rem 0 0; color: #858393; font-size: .62rem; line-height: 1.5; }
 .analytics-ai-placeholder i { color: #866ed0; }
 .analytics-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: .8rem; }
-.analytics-month-bars { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: end; gap: .35rem; height: 165px; margin-top: .9rem; padding-top: .6rem; }
-.analytics-month-bar { display: grid; grid-template-rows: 18px 1fr 17px; align-items: end; justify-items: center; gap: .2rem; height: 100%; }
-.analytics-bar-value { color: #87909c; font-size: .5rem; }
-.analytics-bar-track { display: flex; align-items: end; width: min(100%, 22px); height: 100%; overflow: hidden; border-radius: .3rem .3rem 0 0; background: #f3f5f8; }
-.analytics-bar-track span { display: block; width: 100%; min-height: 2px; border-radius: .3rem .3rem 0 0; background: linear-gradient(180deg,#f39972,#e96162); }
-.analytics-month-bar small { color: #989faa; font-size: .52rem; }
+.analytics-activity-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: .9rem; margin: .85rem 0 .1rem; }
+.analytics-activity-legend span { display: inline-flex; align-items: center; gap: .32rem; color: #5e6570; font-size: .56rem; }
+.analytics-activity-legend i { display: block; flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--series-color); }
+.analytics-activity-chart { width: 100%; margin-top: .25rem; }
+.analytics-activity-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.analytics-activity-gridline { stroke: #e8e8ec; stroke-width: 1; }
+.analytics-activity-axis-label, .analytics-activity-month-label { fill: #737985; font-family: inherit; font-size: 11px; }
 .analytics-horizontal-bars { display: grid; gap: .9rem; margin-top: 1.1rem; }
 .analytics-horizontal-row > div:first-child { display: flex; justify-content: space-between; gap: .5rem; margin-bottom: .28rem; color: #67717f; font-size: .62rem; }
 .analytics-horizontal-row strong { color: #424a57; }
