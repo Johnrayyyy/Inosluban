@@ -9,32 +9,32 @@ $officialGroups = [
         'title' => 'Barangay Leadership',
         'icon' => 'bi-person-badge',
         'officials' => [
-            ['Punong Barangay', 'Hon. Miguel L. Olgado'],
+            ['Punong Barangay', 'Hon. Miguel L. Olgado', true],
         ],
     ],
     [
         'title' => 'Barangay Kagawad',
         'icon' => 'bi-people',
         'officials' => [
-            ['Kagawad', 'Hon. Merlita P. Garcia'],
-            ['Kagawad', 'Hon. Elena B. Aguilera'],
-            ['Kagawad', 'Hon. Felix A. Magcawas'],
-            ['Kagawad', 'Hon. Jericho Dumlao'],
-            ['Kagawad', 'Hon. Omar M. Cabrera'],
-            ['Kagawad', 'Hon. Nestor Balita'],
+            ['Kagawad', 'Hon. Merlita P. Garcia', false],
+            ['Kagawad', 'Hon. Elena B. Aguilera', false],
+            ['Kagawad', 'Hon. Felix A. Magcawas', false],
+            ['Kagawad', 'Hon. Jericho Dumlao', false],
+            ['Kagawad', 'Hon. Omar M. Cabrera', false],
+            ['Kagawad', 'Hon. Nestor Balita', false],
         ],
     ],
     [
         'title' => 'Sangguniang Kabataan',
         'icon' => 'bi-person-hearts',
         'officials' => [
-            ['SK Chairperson', 'Hon. Ashlie Nicole Gonzales'],
-            ['SK Kagawad', 'Faye Abueg'],
-            ['SK Kagawad', 'Gemma Marquez'],
-            ['SK Kagawad', 'Jean Michelle Maoirat'],
-            ['SK Kagawad', 'Lawrence Macahia'],
-            ['SK Kagawad', 'Gian Carlo Barairo'],
-            ['SK Kagawad', 'Mylene Joycee Calise'],
+            ['SK Chairperson', 'Hon. Ashlie Nicole Gonzales', true],
+            ['SK Kagawad', 'Faye Abueg', false],
+            ['SK Kagawad', 'Gemma Marquez', false],
+            ['SK Kagawad', 'Jean Michelle Maoirat', false],
+            ['SK Kagawad', 'Lawrence Macahia', false],
+            ['SK Kagawad', 'Gian Carlo Barairo', false],
+            ['SK Kagawad', 'Mylene Joycee Calise', false],
         ],
     ],
 ];
@@ -92,11 +92,16 @@ require __DIR__ . '/includes/header.php';
                     <?php foreach ($officialGroups as $group): ?>
                         <article class="resident-official-group">
                             <header><span><i class="bi <?= e($group['icon']) ?>"></i></span><h3><?= e($group['title']) ?></h3></header>
-                            <ul>
-                                <?php foreach ($group['officials'] as [$position, $name]): ?>
-                                    <li><span><?= e($position) ?></span><strong><?= e($name) ?></strong></li>
+                            <div class="resident-official-cards">
+                                <?php foreach ($group['officials'] as [$position, $name, $isFeatured]): ?>
+                                    <article class="resident-official-card<?= $isFeatured ? ' resident-official-card-featured' : '' ?>">
+                                        <span class="resident-official-portrait" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
+                                        <span class="resident-official-card-role"><?= e($position) ?></span>
+                                        <strong><?= e($name) ?></strong>
+                                        <?php if ($isFeatured): ?><span class="resident-official-featured-label"><i class="bi bi-star-fill"></i> Barangay leader</span><?php endif; ?>
+                                    </article>
                                 <?php endforeach; ?>
-                            </ul>
+                            </div>
                         </article>
                     <?php endforeach; ?>
                 </div>
