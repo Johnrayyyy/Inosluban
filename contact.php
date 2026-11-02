@@ -61,7 +61,6 @@ require __DIR__ . '/includes/header.php';
     </aside>
     <section class="dashboard-content">
         <header class="dashboard-topbar">
-            <div class="dashboard-search"><i class="bi bi-telephone"></i><span>Barangay communication channels</span></div>
             <div class="dashboard-user"><span class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e($_SESSION['user']['full_name']) ?></strong><small>Resident</small></span></div>
         </header>
         <div class="dashboard-main resident-contact-main">
