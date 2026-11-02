@@ -1337,6 +1337,32 @@ body.hide-site-footer > .site-footer { display: none; }
 .audit-filters label, .request-status-filter label { display: grid; gap: .3rem; color: var(--muted); font-size: .68rem; font-weight: 700; }
 .audit-filters .form-control, .request-status-filter .form-control { min-height: 40px; background: #fff; border-color: #dfe3e9; color: #252a34; font-size: .75rem; }
 .audit-results-count { margin: .65rem 0; color: #7b8490; font-size: .68rem; }
+.admin-timesheet-panel { padding: 1.1rem !important; }
+.admin-timesheet-heading h2 { margin: 0; color: #303a47; font-size: 1rem; font-weight: 750; }
+.admin-timesheet-heading p { margin: .25rem 0 0; color: #7d8793; font-size: .68rem; }
+.admin-timesheet-filter { grid-template-columns: minmax(240px, 1fr) auto auto; margin: .9rem 0 1rem; }
+.admin-timesheet-filter .form-control { min-height: 40px; background: #fff; border-color: #dfe3e9; color: #252a34; font-size: .75rem; }
+.admin-timesheet-staff-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: .65rem; }
+.admin-timesheet-staff-card { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); align-items: center; gap: .65rem; padding: .8rem; border: 1px solid #e8ebf0; border-radius: .75rem; background: linear-gradient(135deg, #fff, #fafbfd); }
+.admin-timesheet-avatar { display: grid; flex: 0 0 2.5rem; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #f5e8ed; color: #91304f; font-size: .68rem; font-weight: 800; }
+.admin-timesheet-staff-info { display: grid; min-width: 0; gap: .15rem; }
+.admin-timesheet-staff-info strong { overflow: hidden; color: #303a47; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.admin-timesheet-staff-info small { color: #828c98; font-size: .58rem; }
+.admin-timesheet-staff-stats { display: flex; grid-column: 1 / -1; flex-wrap: wrap; align-items: center; gap: 1rem; padding: .55rem 0; border-top: 1px solid #edf0f3; border-bottom: 1px solid #edf0f3; }
+.admin-timesheet-staff-stats > span:not(.admin-timesheet-active) { display: grid; gap: .1rem; }
+.admin-timesheet-staff-stats strong { color: #3a4552; font-size: .7rem; }
+.admin-timesheet-staff-stats small { color: #858f9b; font-size: .53rem; }
+.admin-timesheet-active { display: inline-flex; align-items: center; gap: .3rem; color: #32815a; font-size: .57rem; font-weight: 700; }
+.admin-timesheet-active i { font-size: .38rem; }
+.admin-timesheet-staff-card > .btn { grid-column: 1 / -1; justify-self: start; font-size: .58rem; }
+.admin-timesheet-selected { display: flex; align-items: center; gap: .75rem; margin: .9rem 0; padding: .8rem; border: 1px solid #e8ebf0; border-radius: .75rem; background: linear-gradient(120deg, #fff, #fafbfd); }
+.admin-timesheet-selected .admin-timesheet-avatar { width: 3rem; height: 3rem; flex-basis: 3rem; font-size: .8rem; }
+.admin-timesheet-selected > div { display: grid; gap: .12rem; }
+.admin-timesheet-selected > div > small { color: #929aa4; font-size: .5rem; font-weight: 800; letter-spacing: .08em; }
+.admin-timesheet-selected h3 { margin: 0; color: #303a47; font-size: .9rem; }
+.admin-timesheet-selected > div > span { color: #77828f; font-size: .6rem; }
+.admin-timesheet-table { min-width: 600px; }
+.admin-timesheet-table td { vertical-align: middle; }
 .request-status-filter { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin: .8rem 0; }
 .request-status-filter label { display: flex; align-items: center; gap: .4rem; white-space: nowrap; }
 .request-status-filter label i { color: var(--red); font-size: .9rem; }
@@ -1465,6 +1491,7 @@ body.hide-site-footer > .site-footer { display: none; }
     .analytics-age-pie { width: 130px; }
     .audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .audit-search-field { grid-column: 1 / -1; }
+    .admin-timesheet-filter { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 640px) {
@@ -1479,6 +1506,7 @@ body.hide-site-footer > .site-footer { display: none; }
     .request-pagination > div { width: 100%; justify-content: space-between; }
     .audit-filters { grid-template-columns: minmax(0, 1fr); }
     .audit-search-field { grid-column: auto; }
+    .admin-timesheet-filter { grid-template-columns: minmax(0, 1fr); }
     .document-template-actions { flex-direction: column-reverse; }
     .document-template-actions .btn { width: 100%; }
     .appointment-calendar { gap: .15rem; }
