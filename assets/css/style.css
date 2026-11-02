@@ -152,7 +152,7 @@ body.hide-site-footer > .site-footer { display: none; }
 .dashboard-tagline { position: absolute; right: 1rem; top: .4rem; max-width: 235px; color: rgba(255,255,255,.88); font-family: Georgia, serif; font-size: 1rem; font-style: italic; line-height: 1.25; text-align: center; transform: rotate(-8deg); }
 .dashboard-section-heading, .dashboard-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .dashboard-section-heading { margin-bottom: .75rem; }
-.dashboard-section-heading h2, .dashboard-panel-heading h2 { margin: 0; font-size: 1rem; }
+.dashboard-section-heading h2, .dashboard-panel-heading h2 { color: white; margin: 0; font-size: 1rem; }
 .dashboard-section-heading a, .dashboard-panel-heading a { color: white; font-size: .7rem; }
 .dashboard-service-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; }
 .dashboard-service-card, .dashboard-panel { border: 1px solid rgba(255,255,255,.28); background: rgba(104, 75, 77, .42); box-shadow: 0 12px 30px rgba(14, 3, 10, .2), inset 0 1px 0 rgba(255,255,255,.14); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
