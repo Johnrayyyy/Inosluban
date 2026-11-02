@@ -135,7 +135,7 @@ if ($timeStaffId !== null && $selectedTimeStaff === null) {
     $errors[] = 'The selected staff member could not be found.';
     $timeStaffId = null;
 }
-$timePageSize = 20;
+$timePageSize = 10;
 $timeCurrentPage = max(1, (int) (filter_var($_GET['time_page'] ?? 1, FILTER_VALIDATE_INT) ?: 1));
 $timeCountStatement = db()->prepare(
     'SELECT COUNT(*)

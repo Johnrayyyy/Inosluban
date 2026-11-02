@@ -127,6 +127,22 @@ function staff_get_time_log(int $timeLogId, int $userId): ?array
     return $timeLog ?: null;
 }
 
+function staff_time_log_elapsed_seconds(int $timeLogId, int $userId): ?int
+{
+    ensure_staff_tables();
+    $statement = db()->prepare(
+        'SELECT FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - clock_in)))::INT
+         FROM staff_time_log
+         WHERE time_log_id = :time_log_id
+           AND user_id = :user_id
+           AND clock_out IS NULL'
+    );
+    $statement->execute(['time_log_id' => $timeLogId, 'user_id' => $userId]);
+    $elapsedSeconds = $statement->fetchColumn();
+
+    return $elapsedSeconds === false ? null : max(0, (int) $elapsedSeconds);
+}
+
 function staff_touch_time_log(int $timeLogId, int $userId): bool
 {
     ensure_staff_tables();
