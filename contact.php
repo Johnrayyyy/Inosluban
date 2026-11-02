@@ -6,16 +6,10 @@ require_resident();
 
 $officialGroups = [
     [
-        'title' => 'Barangay Leadership',
+        'title' => 'Barangay Council',
         'icon' => 'bi-person-badge',
         'officials' => [
             ['Punong Barangay', 'Hon. Miguel L. Olgado', true],
-        ],
-    ],
-    [
-        'title' => 'Barangay Kagawad',
-        'icon' => 'bi-people',
-        'officials' => [
             ['Kagawad', 'Hon. Merlita P. Garcia', false],
             ['Kagawad', 'Hon. Elena B. Aguilera', false],
             ['Kagawad', 'Hon. Felix A. Magcawas', false],
@@ -98,7 +92,7 @@ require __DIR__ . '/includes/header.php';
                                         <span class="resident-official-portrait" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
                                         <span class="resident-official-card-role"><?= e($position) ?></span>
                                         <strong><?= e($name) ?></strong>
-                                        <?php if ($isFeatured): ?><span class="resident-official-featured-label"><i class="bi bi-star-fill"></i> Barangay leader</span><?php endif; ?>
+                                        <?php if ($isFeatured): ?><span class="resident-official-featured-label"><i class="bi bi-star-fill"></i> <?= str_starts_with($position, 'SK') ? 'SK leader' : 'Barangay leader' ?></span><?php endif; ?>
                                     </article>
                                 <?php endforeach; ?>
                             </div>
@@ -107,8 +101,15 @@ require __DIR__ . '/includes/header.php';
                 </div>
             </section>
             <section class="resident-developers" aria-labelledby="resident-developers-title">
-                <div><p class="eyebrow">PORTAL CREDITS</p><h2 id="resident-developers-title">Developed by</h2></div>
-                <ul><?php foreach ($developers as $developer): ?><li><?= e($developer) ?></li><?php endforeach; ?></ul>
+                <div class="resident-developers-heading"><p class="eyebrow">PORTAL CREDITS</p><h2 id="resident-developers-title">Developed by</h2></div>
+                <div class="resident-developer-cards">
+                    <?php foreach ($developers as $developer): ?>
+                        <article class="resident-developer-card">
+                            <span class="resident-developer-portrait" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
+                            <strong><?= e($developer) ?></strong>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
             </section>
             <p class="resident-contact-note"><i class="bi bi-info-circle"></i> Please avoid sending passwords or sensitive account information through social media or email.</p>
             <a class="resident-contact-back" href="dashboard.php"><i class="bi bi-arrow-left"></i> Back to resident dashboard</a>
