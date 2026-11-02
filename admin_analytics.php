@@ -175,6 +175,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $analytics = admin_analytics_data();
 $overview = $analytics['overview'];
+$renderKpiTrend = static function (string $metric, string $unit) use ($analytics): string {
+    $change = $analytics['kpi_changes'][$metric];
+    $currentCount = $change['current'];
+    $previousCount = $change['previous'];
+    if ($change['percent'] === null) {
+        $changeClass = $currentCount > 0 ? 'is-new' : 'is-neutral';
+        $icon = $currentCount > 0 ? 'bi-stars' : 'bi-dash';
+        $value = $currentCount > 0 ? 'New' : '—';
+        $detail = $currentCount > 0 ? number_format($currentCount) . ' this month' : 'No activity to compare';
+    } else {
+        $changeClass = $change['percent'] > 0 ? 'is-up' : ($change['percent'] < 0 ? 'is-down' : 'is-neutral');
+        $icon = $change['percent'] > 0 ? 'bi-arrow-up-right' : ($change['percent'] < 0 ? 'bi-arrow-down-right' : 'bi-dash');
+        $value = sprintf('%s%s%%', $change['percent'] > 0 ? '+' : '', number_format($change['percent'], 1));
+        $detail = number_format($currentCount) . ' ' . $unit . ' this month';
+    }
+
+    return '<span class="analytics-kpi-change ' . $changeClass . '"><strong><i class="bi ' . $icon . '"></i> ' . $value
+        . '</strong><small>' . e($detail) . ' · vs same period last month</small></span>';
+};
 $activitySeries = [
     ['key' => 'count', 'label' => 'Document Requests', 'color' => '#8f002d'],
     ['key' => 'blotter_count', 'label' => 'Blotter Cases', 'color' => '#f27f99'],
@@ -231,19 +250,20 @@ require __DIR__ . '/includes/header.php';
                 <div><p class="eyebrow"><i class="bi bi-bar-chart-line"></i> ADMIN OVERVIEW</p><h1>Data analytics</h1><p>Service activity, workload, weather signals, and operational insights.</p></div>
                 <span class="analytics-updated"><i class="bi bi-clock-history"></i> Updated <?= e((new DateTimeImmutable($analytics['generated_at']))->format('M j, Y · g:i A')) ?></span>
             </header>
+            <p class="analytics-kpi-comparison-note"><i class="bi bi-info-circle"></i> KPI changes compare this month to the same elapsed period last month.</p>
 
             <?php if ($actionMessage !== ''): ?><div class="alert <?= $actionWarning !== '' ? 'alert-warning' : 'alert-success' ?>"><?= e($actionWarning !== '' ? $actionWarning : $actionMessage) ?></div><?php endif; ?>
             <?php if ($actionError !== ''): ?><div class="alert alert-danger"><?= e($actionError) ?></div><?php endif; ?>
 
             <section class="analytics-kpi-grid" aria-label="Barangay operations summary">
-                <article class="analytics-kpi analytics-kpi-residents"><span class="analytics-kpi-icon"><i class="bi bi-people"></i></span><div><small>Residents</small><strong><?= number_format($overview['residents']) ?></strong><span>registered resident records</span></div></article>
-                <article class="analytics-kpi analytics-kpi-households"><span class="analytics-kpi-icon"><i class="bi bi-houses"></i></span><div><small>Households</small><strong><?= number_format($overview['households']) ?></strong><span>registered household records</span></div></article>
-                <article class="analytics-kpi analytics-kpi-documents"><span class="analytics-kpi-icon"><i class="bi bi-file-earmark-text"></i></span><div><small>Document requests</small><strong><?= number_format($overview['document_requests']) ?></strong><span><?= number_format($overview['pending_documents']) ?> currently pending</span></div></article>
-                <article class="analytics-kpi analytics-kpi-appointments"><span class="analytics-kpi-icon"><i class="bi bi-calendar-check"></i></span><div><small>Upcoming appointments</small><strong><?= number_format($overview['upcoming_appointments']) ?></strong><span>pending or approved</span></div></article>
-                <article class="analytics-kpi analytics-kpi-blotter"><span class="analytics-kpi-icon"><i class="bi bi-shield-exclamation"></i></span><div><small>Open blotter cases</small><strong><?= number_format($overview['open_blotter']) ?></strong><span>awaiting resolution</span></div></article>
-                <article class="analytics-kpi analytics-kpi-staff"><span class="analytics-kpi-icon"><i class="bi bi-person-workspace"></i></span><div><small>Active staff</small><strong><?= number_format($overview['active_staff']) ?></strong><span><?= number_format($overview['published_announcements']) ?> published announcements</span></div></article>
+                <article class="analytics-kpi analytics-kpi-residents"><span class="analytics-kpi-icon"><i class="bi bi-people"></i></span><div><small>Residents</small><strong><?= number_format($overview['residents']) ?></strong><span>registered resident records</span><?= $renderKpiTrend('residents', 'registrations') ?></div></article>
+                <article class="analytics-kpi analytics-kpi-households"><span class="analytics-kpi-icon"><i class="bi bi-houses"></i></span><div><small>Households</small><strong><?= number_format($overview['households']) ?></strong><span>registered household records</span><?= $renderKpiTrend('households', 'households') ?></div></article>
+                <article class="analytics-kpi analytics-kpi-documents"><span class="analytics-kpi-icon"><i class="bi bi-file-earmark-text"></i></span><div><small>Document requests</small><strong><?= number_format($overview['document_requests']) ?></strong><span><?= number_format($overview['pending_documents']) ?> currently pending</span><?= $renderKpiTrend('documents', 'requests') ?></div></article>
+                <article class="analytics-kpi analytics-kpi-appointments"><span class="analytics-kpi-icon"><i class="bi bi-calendar-check"></i></span><div><small>Upcoming appointments</small><strong><?= number_format($overview['upcoming_appointments']) ?></strong><span>pending or approved</span><?= $renderKpiTrend('appointments', 'appointments') ?></div></article>
+                <article class="analytics-kpi analytics-kpi-blotter"><span class="analytics-kpi-icon"><i class="bi bi-shield-exclamation"></i></span><div><small>Open blotter cases</small><strong><?= number_format($overview['open_blotter']) ?></strong><span>awaiting resolution</span><?= $renderKpiTrend('blotter', 'reports') ?></div></article>
+                <article class="analytics-kpi analytics-kpi-staff"><span class="analytics-kpi-icon"><i class="bi bi-person-workspace"></i></span><div><small>Active staff</small><strong><?= number_format($overview['active_staff']) ?></strong><span><?= number_format($overview['published_announcements']) ?> published announcements</span><?= $renderKpiTrend('staff', 'staff accounts') ?></div></article>
                 <article class="analytics-kpi analytics-kpi-revenue"><span class="analytics-kpi-icon"><i class="bi bi-cash-coin"></i></span><div><small>Revenue</small><strong>Not tracked</strong><span><?= e($analytics['revenue']['message']) ?></span></div></article>
-                <article class="analytics-kpi analytics-kpi-alerts"><span class="analytics-kpi-icon"><i class="bi bi-broadcast-pin"></i></span><div><small>Active disaster alerts</small><strong><?= number_format($overview['active_disaster_alerts']) ?></strong><span><?= number_format($overview['failed_notifications']) ?> failed notifications</span></div></article>
+                <article class="analytics-kpi analytics-kpi-alerts"><span class="analytics-kpi-icon"><i class="bi bi-broadcast-pin"></i></span><div><small>Active disaster alerts</small><strong><?= number_format($overview['active_disaster_alerts']) ?></strong><span><?= number_format($overview['failed_notifications']) ?> failed notifications</span><?= $renderKpiTrend('alerts', 'alerts') ?></div></article>
             </section>
 
             <section class="analytics-panel analytics-ai-panel">

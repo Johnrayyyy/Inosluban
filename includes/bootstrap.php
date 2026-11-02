@@ -21,7 +21,10 @@ function db(): PDO
         throw new RuntimeException('Database configuration is incomplete. Set DATABASE_URL or all DB_* values in the Render secret file or service environment.');
     }
 
-    $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";sslmode=require";
+    $sslMode = in_array(strtolower(DB_HOST), ['localhost', '127.0.0.1', '::1'], true)
+        ? 'prefer'
+        : 'require';
+    $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";sslmode=" . $sslMode;
 
     $pdo = new PDO($dsn, DB_USER, DB_PASSWORD);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

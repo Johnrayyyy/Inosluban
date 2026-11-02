@@ -7,11 +7,37 @@ A beginner-friendly PHP starter project for a secure login and registration flow
 1. Copy this folder to `C:\xampp\htdocs\PHP_project`.
 2. Start **Apache** in the XAMPP Control Panel.
 3. Open [http://localhost/PHP_project/](http://localhost/PHP_project/) in your browser.
-4. Configure the PostgreSQL connection in `.env`, then choose **Create an account** to test registration.
+4. Configure the local PostgreSQL connection in `.env.local` (see below), then choose **Create an account** to test registration.
 
 The project uses the PHP version included with XAMPP. Make sure the `pdo_pgsql`
 and `curl` extensions are enabled in `php.ini`. Docker deployments install both
 extensions in the image.
+
+### Local PostgreSQL database
+
+The XAMPP setup uses an isolated PostgreSQL 18 instance on `127.0.0.1:5433`,
+separate from any other PostgreSQL service or remote database. The local
+`portal_inosluban` database is initialized from `schema.sql`. Its connection
+settings are in the ignored `.env.local` file; the app loads these before the
+project `.env`, so local development does not change remote database settings.
+Do not commit either environment file.
+
+The local database runs independently of Apache. If you restart Windows, start
+the local instance from PowerShell before opening the app:
+
+```powershell
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' `
+  -D 'C:\xampp\pgsql-local-data' `
+  -l 'C:\xampp\pgsql-local.log' `
+  -o '-h 127.0.0.1 -p 5433' -w start
+```
+
+To stop only this local instance:
+
+```powershell
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' `
+  -D 'C:\xampp\pgsql-local-data' stop -m fast
+```
 
 Document request confirmations and profile verification emails use PHPMailer
 over SMTP. Docker deployments install Composer dependencies as part of the
@@ -34,9 +60,12 @@ DATABASE_URL=postgresql://username:password@hostname:5432/database
 ```
 
 The app also supports individual `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
-and `DB_PASSWORD` settings instead of `DATABASE_URL`. For local XAMPP, create
-a project-root `.env` file and use Render's external database connection
-details. Never commit `.env` or include it in the Docker image. For email, set
+and `DB_PASSWORD` settings instead of `DATABASE_URL`. For local XAMPP, use a
+separate PostgreSQL database and put its credentials in `.env.local`; this file
+overrides the project `.env` for local development and is ignored by Git. Copy
+`.env.local.example`, then change the password to the local database user's
+password. Never commit `.env` or `.env.local`, or include them in the Docker
+image. For email, set
 `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`, and
 `MAIL_FROM_NAME`. For Brevo, use `smtp-relay.brevo.com`, your Brevo SMTP login
 and SMTP key, and a sender email verified in Brevo as `MAIL_FROM`. On Render,

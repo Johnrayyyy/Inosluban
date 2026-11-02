@@ -18,6 +18,65 @@ function admin_analytics_data(): array
             (SELECT COUNT(*) FROM notification_log WHERE delivery_status = 'Failed') AS failed_notifications"
     )->fetch();
 
+    $kpiPeriods = $pdo->query(
+        "WITH periods AS (
+            SELECT DATE_TRUNC('month', CURRENT_TIMESTAMP) AS current_start,
+                   CURRENT_TIMESTAMP AS current_end,
+                   DATE_TRUNC('month', CURRENT_TIMESTAMP) - INTERVAL '1 month' AS previous_start,
+                   LEAST(
+                       DATE_TRUNC('month', CURRENT_TIMESTAMP),
+                       DATE_TRUNC('month', CURRENT_TIMESTAMP) - INTERVAL '1 month'
+                           + (CURRENT_TIMESTAMP - DATE_TRUNC('month', CURRENT_TIMESTAMP))
+                   ) AS previous_end
+        )
+        SELECT 'residents' AS metric,
+               COUNT(*) FILTER (WHERE r.created_at >= p.current_start AND r.created_at < p.current_end) AS current_count,
+               COUNT(*) FILTER (WHERE r.created_at >= p.previous_start AND r.created_at < p.previous_end) AS previous_count
+        FROM resident r CROSS JOIN periods p
+        UNION ALL
+        SELECT 'households',
+               COUNT(*) FILTER (WHERE h.created_at >= p.current_start AND h.created_at < p.current_end),
+               COUNT(*) FILTER (WHERE h.created_at >= p.previous_start AND h.created_at < p.previous_end)
+        FROM household_record h CROSS JOIN periods p
+        UNION ALL
+        SELECT 'documents',
+               COUNT(*) FILTER (WHERE d.request_date >= p.current_start AND d.request_date < p.current_end),
+               COUNT(*) FILTER (WHERE d.request_date >= p.previous_start AND d.request_date < p.previous_end)
+        FROM document_request d CROSS JOIN periods p
+        UNION ALL
+        SELECT 'appointments',
+               COUNT(*) FILTER (WHERE a.created_at >= p.current_start AND a.created_at < p.current_end),
+               COUNT(*) FILTER (WHERE a.created_at >= p.previous_start AND a.created_at < p.previous_end)
+        FROM appointment a CROSS JOIN periods p
+        UNION ALL
+        SELECT 'blotter',
+               COUNT(*) FILTER (WHERE b.report_date >= p.current_start AND b.report_date < p.current_end),
+               COUNT(*) FILTER (WHERE b.report_date >= p.previous_start AND b.report_date < p.previous_end)
+        FROM blotter b CROSS JOIN periods p
+        UNION ALL
+        SELECT 'staff',
+               COUNT(*) FILTER (WHERE s.created_at >= p.current_start AND s.created_at < p.current_end),
+               COUNT(*) FILTER (WHERE s.created_at >= p.previous_start AND s.created_at < p.previous_end)
+        FROM staff s CROSS JOIN periods p
+        UNION ALL
+        SELECT 'alerts',
+               COUNT(*) FILTER (WHERE d.created_at >= p.current_start AND d.created_at < p.current_end),
+               COUNT(*) FILTER (WHERE d.created_at >= p.previous_start AND d.created_at < p.previous_end)
+        FROM disaster_preparedness d CROSS JOIN periods p"
+    )->fetchAll();
+    $kpiChanges = [];
+    foreach ($kpiPeriods as $period) {
+        $currentCount = (int) $period['current_count'];
+        $previousCount = (int) $period['previous_count'];
+        $kpiChanges[(string) $period['metric']] = [
+            'current' => $currentCount,
+            'previous' => $previousCount,
+            'percent' => $previousCount > 0
+                ? round(($currentCount - $previousCount) / $previousCount * 100, 1)
+                : null,
+        ];
+    }
+
     $residentStatuses = $pdo->query(
         'SELECT residency_status, COUNT(*) AS item_count
          FROM resident
@@ -205,6 +264,7 @@ function admin_analytics_data(): array
 
     return [
         'overview' => array_map('intval', $overview),
+        'kpi_changes' => $kpiChanges,
         'document_types' => array_map(
             static fn (array $row): array => ['label' => (string) $row['document_type'], 'count' => (int) $row['request_count']],
             $documentTypes
