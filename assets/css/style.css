@@ -1361,16 +1361,71 @@ body.hide-site-footer > .site-footer { display: none; }
 .admin-timesheet-selected > div > small { color: #929aa4; font-size: .5rem; font-weight: 800; letter-spacing: .08em; }
 .admin-timesheet-selected h3 { margin: 0; color: #303a47; font-size: .9rem; }
 .admin-timesheet-selected > div > span { color: #77828f; font-size: .6rem; }
-.admin-attendance-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; margin: .8rem 0 1rem; padding: .8rem; border: 1px solid #e8ebf0; border-radius: .75rem; background: #fbfcfd; }
+.admin-attendance-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: .7rem; margin: .8rem 0 1rem; padding: .8rem; border: 1px solid #e8ebf0; border-radius: .75rem; background: #fbfcfd; }
 .admin-attendance-stat { display: grid; gap: .2rem; }
 .admin-attendance-stat small { color: #7d8793; font-size: .6rem; }
 .admin-attendance-stat strong { color: #303a47; font-size: .8rem; }
-.admin-attendance-dates { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; padding-top: .7rem; border-top: 1px solid #e8ebf0; }
+.admin-attendance-dates { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; padding-top: .7rem; border-top: 1px solid #e8ebf0; }
 .admin-attendance-dates h4 { margin: 0 0 .25rem; color: #46515e; font-size: .65rem; font-weight: 750; }
 .admin-attendance-dates p { margin: 0; color: #77828f; font-size: .62rem; line-height: 1.6; overflow-wrap: anywhere; }
 .admin-attendance-note { grid-column: 1 / -1; margin: 0; color: #8a929b; font-size: .56rem; }
 .admin-timesheet-table { min-width: 600px; }
 .admin-timesheet-table td { vertical-align: middle; }
+.staff-leave-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1.1rem; padding: 1.1rem 1.25rem; border: 1px solid #e8ebf0; border-radius: 1rem; background: linear-gradient(120deg, #fff, #f8fafc); }
+.staff-leave-heading h1 { margin: 0; color: #303a47; font-size: 1.25rem; font-weight: 800; }
+.staff-leave-heading p:not(.eyebrow) { margin: .35rem 0 0; color: #7d8793; font-size: .73rem; }
+.staff-leave-pending, .staff-leave-policy { display: inline-flex; align-items: center; gap: .45rem; flex-shrink: 0; padding: .5rem .75rem; border: 1px solid #e7ebf0; border-radius: 99px; background: #fff; color: #536171; font-size: .65rem; font-weight: 750; }
+.staff-leave-pending { border-color: #f0dfb8; background: #fff8e8; color: #8a641c; }
+.staff-leave-form-panel, .staff-leave-list-panel { margin-bottom: 1rem; padding: 1.1rem !important; }
+.staff-leave-section-heading { display: flex; align-items: center; gap: .7rem; margin-bottom: 1rem; }
+.staff-leave-section-heading > span { display: grid; width: 2.4rem; height: 2.4rem; place-items: center; border-radius: .7rem; background: #f6e8ed; color: #91304f; font-size: 1rem; }
+.staff-leave-section-heading h2, .staff-leave-list-heading h2 { margin: 0; color: #303a47; font-size: .95rem; font-weight: 780; }
+.staff-leave-section-heading p, .staff-leave-list-heading p { margin: .2rem 0 0; color: #7d8793; font-size: .66rem; }
+.staff-leave-form { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.staff-leave-form > label, .staff-leave-admin-note-field { display: grid; gap: .35rem; color: #46515e; font-size: .67rem; font-weight: 700; }
+.staff-leave-form .form-control, .staff-leave-review-form .form-control, .staff-leave-filter .form-control { min-height: 40px; border-color: #dfe3e9; background: #fff; color: #252a34; font-size: .73rem; }
+.staff-leave-form .form-control:focus, .staff-leave-review-form .form-control:focus { border-color: #a44c69; box-shadow: 0 0 0 .2rem rgb(145 48 79 / 12%); }
+.staff-leave-reason { grid-column: 1 / -1; }
+.staff-leave-reason textarea { min-height: 90px; resize: vertical; }
+.staff-leave-reason small { color: #8a929b; font-size: .59rem; font-weight: 400; }
+.staff-leave-form-footer { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: .8rem; padding-top: .8rem; border-top: 1px solid #edf0f3; }
+.staff-leave-form-footer > span { color: #78838f; font-size: .63rem; }
+.staff-leave-form-footer > span i { margin-right: .25rem; color: #4a7894; }
+.staff-leave-form-footer .btn { background: #91304f; border-color: #91304f; font-size: .69rem; }
+.staff-leave-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .9rem; }
+.staff-leave-list-heading .eyebrow { margin-bottom: .25rem; }
+.staff-leave-filter { display: flex; align-items: center; gap: .4rem; }
+.staff-leave-filter label { color: #737e8b; font-size: .62rem; font-weight: 700; }
+.staff-leave-filter .form-control { min-width: 130px; }
+.staff-leave-filter .btn { font-size: .65rem; }
+.staff-leave-request-list { display: grid; gap: .65rem; }
+.staff-leave-request-card { padding: .9rem; border: 1px solid #e8ebf0; border-radius: .8rem; background: linear-gradient(135deg, #fff, #fbfcfd); }
+.staff-leave-request-top, .staff-leave-request-title { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
+.staff-leave-request-title { justify-content: flex-start; min-width: 0; }
+.staff-leave-type-icon { display: grid; flex: 0 0 2.2rem; width: 2.2rem; height: 2.2rem; place-items: center; border-radius: .65rem; background: #f6e8ed; color: #91304f; }
+.staff-leave-request-title h3 { margin: 0; color: #303a47; font-size: .75rem; font-weight: 780; }
+.staff-leave-request-title div > span { display: block; margin-top: .12rem; color: #78838f; font-size: .62rem; }
+.staff-leave-status { flex-shrink: 0; padding: .28rem .55rem; border-radius: 99px; font-size: .58rem; font-weight: 750; }
+.staff-leave-status.status-pending { background: #fff2d6; color: #946812; }
+.staff-leave-status.status-approved { background: #e3f5eb; color: #28774e; }
+.staff-leave-status.status-rejected { background: #fce8e9; color: #a3454c; }
+.staff-leave-status.status-withdrawn { background: #eff2f5; color: #66717e; }
+.staff-leave-requester { margin: .7rem 0 0; color: #526170; font-size: .64rem; font-weight: 700; }
+.staff-leave-requester i { margin-right: .3rem; }
+.staff-leave-reason-text { margin: .65rem 0; color: #515d69; font-size: .68rem; line-height: 1.55; }
+.staff-leave-request-meta { display: flex; flex-wrap: wrap; gap: .7rem; color: #8a929b; font-size: .57rem; }
+.staff-leave-admin-note { display: grid; gap: .2rem; margin-top: .65rem; padding: .6rem .7rem; border-left: 3px solid #8aabc2; border-radius: .25rem; background: #f3f7fa; color: #596a78; font-size: .63rem; }
+.staff-leave-admin-note strong { font-size: .59rem; }
+.staff-leave-review-form { display: grid; grid-template-columns: minmax(180px, 1fr) auto; align-items: end; gap: .7rem; margin-top: .75rem; padding-top: .7rem; border-top: 1px solid #edf0f3; }
+.staff-leave-review-form textarea { min-height: 54px; resize: vertical; }
+.staff-leave-review-form > div { display: flex; gap: .4rem; }
+.staff-leave-review-form .btn { font-size: .62rem; }
+.staff-leave-withdraw-form { margin-top: .65rem; }
+.staff-leave-withdraw-form .btn { font-size: .6rem; }
+.staff-leave-empty { display: grid; justify-items: center; gap: .3rem; padding: 2rem 1rem; color: #7d8793; text-align: center; }
+.staff-leave-empty > i { margin-bottom: .25rem; color: #aab3bd; font-size: 1.5rem; }
+.staff-leave-empty strong { color: #46515e; font-size: .75rem; }
+.staff-leave-empty span { font-size: .65rem; }
 .request-status-filter { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin: .8rem 0; }
 .request-status-filter label { display: flex; align-items: center; gap: .4rem; white-space: nowrap; }
 .request-status-filter label i { color: var(--red); font-size: .9rem; }
@@ -1500,8 +1555,13 @@ body.hide-site-footer > .site-footer { display: none; }
     .audit-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .audit-search-field { grid-column: 1 / -1; }
     .admin-timesheet-filter { grid-template-columns: minmax(0, 1fr); }
-    .admin-attendance-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .admin-attendance-dates { grid-template-columns: minmax(0, 1fr); }
+    .admin-attendance-dates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .staff-leave-heading, .staff-leave-list-heading { align-items: flex-start; flex-direction: column; }
+    .staff-leave-form { grid-template-columns: minmax(0, 1fr); }
+    .staff-leave-reason, .staff-leave-form-footer { grid-column: auto; }
+    .staff-leave-form-footer { align-items: flex-start; flex-direction: column; }
+    .staff-leave-review-form { grid-template-columns: minmax(0, 1fr); }
+    .staff-leave-review-form > div { justify-content: flex-start; }
 }
 
 @media (max-width: 640px) {
@@ -1517,7 +1577,6 @@ body.hide-site-footer > .site-footer { display: none; }
     .audit-filters { grid-template-columns: minmax(0, 1fr); }
     .audit-search-field { grid-column: auto; }
     .admin-timesheet-filter { grid-template-columns: minmax(0, 1fr); }
-    .admin-attendance-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .admin-attendance-dates { grid-template-columns: minmax(0, 1fr); }
     .document-template-actions { flex-direction: column-reverse; }
     .document-template-actions .btn { width: 100%; }

@@ -473,6 +473,29 @@ CREATE TABLE staff_monthly_time_summary (
     PRIMARY KEY (user_id, month_start)
 );
 
+CREATE TABLE staff_leave_request (
+    leave_request_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES user_account(user_id) ON DELETE CASCADE,
+    leave_type VARCHAR(30) NOT NULL
+        CHECK (leave_type IN ('Annual', 'Sick', 'Personal', 'Other')),
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'Pending'
+        CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Withdrawn')),
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_by INT REFERENCES user_account(user_id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ,
+    admin_note TEXT,
+    CHECK (end_date >= start_date)
+);
+
+CREATE INDEX idx_staff_leave_request_status_dates
+    ON staff_leave_request (status, start_date, end_date);
+
+CREATE INDEX idx_staff_leave_request_user_dates
+    ON staff_leave_request (user_id, start_date DESC);
+
 CREATE TABLE weather_advisory (
     advisory_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     created_by_user_id INT REFERENCES user_account(user_id) ON DELETE SET NULL,

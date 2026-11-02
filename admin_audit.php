@@ -7,6 +7,7 @@ require_once __DIR__ . '/includes/staff.php';
 require_admin();
 ensure_admin_schema();
 ensure_staff_tables();
+ensure_staff_leave_schema();
 
 $errors = [];
 $searchInput = $_GET['search'] ?? '';
@@ -184,6 +185,7 @@ $timeTotalRows = 0;
 $timeTotalPages = 1;
 $timeLogs = [];
 $presentDates = [];
+$approvedLeaveDates = [];
 $workDates = [];
 $absentDates = [];
 if ($selectedTimeStaff !== null) {
@@ -258,6 +260,29 @@ if ($selectedTimeStaff !== null) {
         $presentDates[] = (new DateTimeImmutable((string) $attendanceDate, $timeZone))->format('Y-m-d');
     }
 
+    $approvedLeaveStatement = db()->prepare(
+        "SELECT start_date, end_date
+         FROM staff_leave_request
+         WHERE user_id = :user_id
+           AND status = 'Approved'
+           AND start_date < CAST(:next_month AS DATE)
+           AND end_date >= CAST(:month_start AS DATE)"
+    );
+    $approvedLeaveStatement->execute([
+        'user_id' => (int) $selectedTimeStaff['user_id'],
+        'month_start' => $monthStartValue,
+        'next_month' => $nextMonthStartValue,
+    ]);
+    foreach ($approvedLeaveStatement->fetchAll() as $approvedLeave) {
+        $leaveStart = new DateTimeImmutable((string) $approvedLeave['start_date'], $timeZone);
+        $leaveEnd = new DateTimeImmutable((string) $approvedLeave['end_date'], $timeZone);
+        $leaveStart = $leaveStart < $monthStart ? $monthStart : $leaveStart;
+        $leaveEnd = $leaveEnd >= $nextMonthStart ? $nextMonthStart->modify('-1 day') : $leaveEnd;
+        for ($leaveDate = $leaveStart; $leaveDate <= $leaveEnd; $leaveDate = $leaveDate->modify('+1 day')) {
+            $approvedLeaveDates[] = $leaveDate->format('Y-m-d');
+        }
+    }
+
     $today = new DateTimeImmutable('today', $timeZone);
     $staffStartDate = new DateTimeImmutable(
         (new DateTimeImmutable((string) $selectedTimeStaff['created_at']))->setTimezone($timeZone)->format('Y-m-d'),
@@ -271,7 +296,10 @@ if ($selectedTimeStaff !== null) {
         if ((int) $workday->format('N') <= 4) {
             $workDate = $workday->format('Y-m-d');
             $workDates[] = $workDate;
-            if (!in_array($workDate, $presentDates, true)) {
+            if (
+                !in_array($workDate, $presentDates, true)
+                && !in_array($workDate, $approvedLeaveDates, true)
+            ) {
                 $absentDates[] = $workDate;
             }
         }
@@ -353,9 +381,10 @@ require __DIR__ . '/includes/header.php';
                 <div class="admin-attendance-stat"><small>Work time</small><strong><?= number_format(intdiv((int) $selectedTimeStaff['total_seconds'], 3600)) ?>h <?= number_format(intdiv((int) $selectedTimeStaff['total_seconds'] % 3600, 60)) ?>m</strong></div>
                 <div class="admin-attendance-stat"><small>Shifts</small><strong><?= number_format((int) $selectedTimeStaff['shifts']) ?></strong></div>
                 <div class="admin-attendance-stat"><small>Present workdays</small><strong><?= number_format(count(array_intersect($presentDates, $workDates))) ?></strong></div>
+                <div class="admin-attendance-stat"><small>Approved leave days</small><strong><?= number_format(count(array_intersect($approvedLeaveDates, $workDates))) ?></strong></div>
                 <div class="admin-attendance-stat"><small>Potential absences</small><strong><?= number_format(count($absentDates)) ?></strong></div>
-                <div class="admin-attendance-dates"><div><h4>Present dates</h4><p><?= $presentDates === [] ? 'No attendance recorded.' : e($formatAttendanceDates($presentDates)) ?></p></div><div><h4>Potential absences</h4><p><?= $workDates === [] ? 'No completed Monday–Thursday workdays to report yet.' : ($absentDates === [] ? 'No Monday–Thursday dates without a clock-in.' : e($formatAttendanceDates($absentDates))) ?></p></div></div>
-                <p class="admin-attendance-note">Absences are inferred from Monday–Thursday dates with no clock-in. Approved leave and holidays are not available in the attendance records.</p>
+                <div class="admin-attendance-dates"><div><h4>Present dates</h4><p><?= $presentDates === [] ? 'No attendance recorded.' : e($formatAttendanceDates($presentDates)) ?></p></div><div><h4>Approved leave</h4><p><?= $approvedLeaveDates === [] ? 'No approved leave dates.' : e($formatAttendanceDates($approvedLeaveDates)) ?></p></div><div><h4>Potential absences</h4><p><?= $workDates === [] ? 'No completed Monday–Thursday workdays to report yet.' : ($absentDates === [] ? 'No Monday–Thursday dates without attendance or approved leave.' : e($formatAttendanceDates($absentDates))) ?></p></div></div>
+                <p class="admin-attendance-note">Absences are inferred from Monday–Thursday dates with no clock-in or approved leave. Holidays and unrecorded leave are not accounted for.</p>
             </section>
             <div class="table-responsive"><table class="staff-table admin-timesheet-table"><thead><tr><th>Work date</th><th>Clock in</th><th>Clock out</th><th>Time worked</th><th>Session</th></tr></thead><tbody>
                 <?php foreach ($timeLogs as $log): ?>

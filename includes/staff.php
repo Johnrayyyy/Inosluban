@@ -51,6 +51,36 @@ function ensure_staff_tables(): void
     );
 }
 
+function ensure_staff_leave_schema(): void
+{
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS staff_leave_request (
+            leave_request_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            user_id INT NOT NULL REFERENCES user_account(user_id) ON DELETE CASCADE,
+            leave_type VARCHAR(30) NOT NULL
+                CHECK (leave_type IN ('Annual', 'Sick', 'Personal', 'Other')),
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            reason TEXT NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'Pending'
+                CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Withdrawn')),
+            requested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reviewed_by INT REFERENCES user_account(user_id) ON DELETE SET NULL,
+            reviewed_at TIMESTAMPTZ,
+            admin_note TEXT,
+            CHECK (end_date >= start_date)
+        )"
+    );
+    db()->exec(
+        'CREATE INDEX IF NOT EXISTS idx_staff_leave_request_status_dates
+         ON staff_leave_request (status, start_date, end_date)'
+    );
+    db()->exec(
+        'CREATE INDEX IF NOT EXISTS idx_staff_leave_request_user_dates
+         ON staff_leave_request (user_id, start_date DESC)'
+    );
+}
+
 function archive_staff_monthly_time(): void
 {
     ensure_staff_tables();
