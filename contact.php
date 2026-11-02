@@ -6,29 +6,35 @@ require_resident();
 
 $officialGroups = [
     [
-        'title' => 'Barangay Council',
+        'title' => 'Barangay Officials',
         'icon' => 'bi-person-badge',
-        'officials' => [
-            ['Punong Barangay', 'Hon. Miguel L. Olgado', true],
-            ['Kagawad', 'Hon. Merlita P. Garcia', false],
-            ['Kagawad', 'Hon. Elena B. Aguilera', false],
-            ['Kagawad', 'Hon. Felix A. Magcawas', false],
-            ['Kagawad', 'Hon. Jericho Dumlao', false],
-            ['Kagawad', 'Hon. Omar M. Cabrera', false],
-            ['Kagawad', 'Hon. Nestor Balita', false],
+        'tagline' => 'Local governance officials of Barangay Inosluban.',
+        'leader_role' => 'Punong Barangay',
+        'leader_name' => 'Hon. Miguel L. Olgado',
+        'member_role' => 'Barangay Kagawad',
+        'members' => [
+            'Hon. Merlita P. Garcia',
+            'Hon. Elena B. Aguilera',
+            'Hon. Felix A. Magcawas',
+            'Hon. Jericho Dumlao',
+            'Hon. Omar M. Cabrera',
+            'Hon. Nestor Balita',
         ],
     ],
     [
         'title' => 'Sangguniang Kabataan',
         'icon' => 'bi-person-hearts',
-        'officials' => [
-            ['SK Chairperson', 'Hon. Ashlie Nicole Gonzales', true],
-            ['SK Kagawad', 'Faye Abueg', false],
-            ['SK Kagawad', 'Gemma Marquez', false],
-            ['SK Kagawad', 'Jean Michelle Maoirat', false],
-            ['SK Kagawad', 'Lawrence Macahia', false],
-            ['SK Kagawad', 'Gian Carlo Barairo', false],
-            ['SK Kagawad', 'Mylene Joycee Calise', false],
+        'tagline' => 'Youth leaders for a progressive Barangay.',
+        'leader_role' => 'SK Chairperson',
+        'leader_name' => 'Hon. Ashlie Nicole Gonzales',
+        'member_role' => 'SK Kagawad',
+        'members' => [
+            'Faye Abueg',
+            'Gemma Marquez',
+            'Jean Michelle Maoirat',
+            'Lawrence Macahia',
+            'Gian Carlo Barairo',
+            'Mylene Joycee Calise',
         ],
     ],
 ];
@@ -86,29 +92,34 @@ require __DIR__ . '/includes/header.php';
                     <?php foreach ($officialGroups as $group): ?>
                         <article class="resident-official-group">
                             <header><span><i class="bi <?= e($group['icon']) ?>"></i></span><h3><?= e($group['title']) ?></h3></header>
-                            <div class="resident-official-cards">
-                                <?php foreach ($group['officials'] as [$position, $name, $isFeatured]): ?>
-                                    <article class="resident-official-card<?= $isFeatured ? ' resident-official-card-featured' : '' ?>">
-                                        <span class="resident-official-portrait" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
-                                        <span class="resident-official-card-role"><?= e($position) ?></span>
-                                        <strong><?= e($name) ?></strong>
-                                        <?php if ($isFeatured): ?><span class="resident-official-featured-label"><i class="bi bi-star-fill"></i> <?= str_starts_with($position, 'SK') ? 'SK leader' : 'Barangay leader' ?></span><?php endif; ?>
+                            <p class="resident-official-tagline"><?= e($group['tagline']) ?></p>
+                            <div class="resident-official-featured">
+                                <span><?= e($group['leader_role']) ?></span>
+                                <strong><?= e($group['leader_name']) ?></strong>
+                            </div>
+                            <div class="resident-official-member-heading"><i class="bi bi-people-fill"></i><span><?= e($group['member_role']) ?> (<?= count($group['members']) ?> Members)</span></div>
+                            <div class="resident-official-members">
+                                <?php foreach ($group['members'] as $member): ?>
+                                    <article class="resident-official-member">
+                                        <strong><?= e($member) ?></strong>
+                                        <span><?= e($group['member_role']) ?></span>
                                     </article>
                                 <?php endforeach; ?>
                             </div>
                         </article>
                     <?php endforeach; ?>
-                </div>
-            </section>
-            <section class="resident-developers" aria-labelledby="resident-developers-title">
-                <div class="resident-developers-heading"><p class="eyebrow">PORTAL CREDITS</p><h2 id="resident-developers-title">Developed by</h2></div>
-                <div class="resident-developer-cards">
-                    <?php foreach ($developers as $developer): ?>
-                        <article class="resident-developer-card">
-                            <span class="resident-developer-portrait" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
-                            <strong><?= e($developer) ?></strong>
-                        </article>
-                    <?php endforeach; ?>
+                    <article class="resident-developer-group">
+                        <header><span><i class="bi bi-code-slash"></i></span><h3 id="resident-developers-title">Developers</h3></header>
+                        <p>System developers behind the Barangay Inosluban Portal.</p>
+                        <div class="resident-developer-cards">
+                            <?php foreach ($developers as $developer): ?>
+                                <article class="resident-developer-card">
+                                    <strong><?= e($developer) ?></strong>
+                                    <span>Developer</span>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    </article>
                 </div>
             </section>
             <p class="resident-contact-note"><i class="bi bi-info-circle"></i> Please avoid sending passwords or sensitive account information through social media or email.</p>
