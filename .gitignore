@@ -1,2 +1,5 @@
 .env
 vendor/
+.venv-face/
+__pycache__/
+*.py[cod]

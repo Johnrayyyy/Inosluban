@@ -1,12 +1,15 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . "/../config/config.php";
 
+ini_set("session.use_strict_mode", "1");
+ini_set("session.use_only_cookies", "1");
+ini_set("session.use_trans_sid", "0");
 session_set_cookie_params([
-    'httponly' => true,
-    'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-    'samesite' => 'Lax',
+    "httponly" => true,
+    "secure" => !empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off",
+    "samesite" => "Lax",
 ]);
 session_start();
 
@@ -17,30 +20,51 @@ function db(): PDO
         return $pdo;
     }
 
-    if (DB_HOST === '' || DB_NAME === '' || DB_USER === '' || DB_PASSWORD === '') {
-        throw new RuntimeException('Database configuration is incomplete. Set DATABASE_URL or all DB_* values in the Render secret file or service environment.');
+    if (
+        DB_HOST === "" ||
+        DB_NAME === "" ||
+        DB_USER === "" ||
+        DB_PASSWORD === ""
+    ) {
+        throw new RuntimeException(
+            "Database configuration is incomplete. Set DATABASE_URL or all DB_* values in the Render secret file or service environment.",
+        );
     }
 
-    $sslMode = in_array(strtolower(DB_HOST), ['localhost', '127.0.0.1', '::1'], true)
-        ? 'prefer'
-        : 'require';
-    $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";sslmode=" . $sslMode;
-
-    $pdo = new PDO($dsn, DB_USER, DB_PASSWORD);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $sslMode = in_array(
+        strtolower(DB_HOST),
+        ["localhost", "127.0.0.1", "::1"],
+        true,
+    )
+        ? "prefer"
+        : "require";
+    $dsn =
+        "pgsql:host=" .
+        DB_HOST .
+        ";port=" .
+        DB_PORT .
+        ";dbname=" .
+        DB_NAME .
+        ";sslmode=" .
+        $sslMode;
+    $pdo = new PDO($dsn, DB_USER, DB_PASSWORD, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+        PDO::ATTR_STRINGIFY_FETCHES => false,
+    ]);
 
     return $pdo;
 }
 
 function e(string $value): string
 {
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars($value, ENT_QUOTES, "UTF-8");
 }
 
 function format_app_datetime(?string $value, string $format): string
 {
-    $dateTime = new DateTimeImmutable($value ?? 'now');
+    $dateTime = new DateTimeImmutable($value ?? "now");
 
     return $dateTime
         ->setTimezone(new DateTimeZone(APP_TIMEZONE))
@@ -49,30 +73,42 @@ function format_app_datetime(?string $value, string $format): string
 
 function csrf_token(): string
 {
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    if (
+        !isset($_SESSION["csrf_token"]) ||
+        !is_string($_SESSION["csrf_token"]) ||
+        strlen($_SESSION["csrf_token"]) !== 64 ||
+        !ctype_xdigit($_SESSION["csrf_token"])
+    ) {
+        $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
     }
-    return $_SESSION['csrf_token'];
+    return $_SESSION["csrf_token"];
 }
 
-function verify_csrf_token(string $token): void
+function verify_csrf_token(mixed $token): void
 {
-    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+    $sessionToken = $_SESSION["csrf_token"] ?? null;
+    if (
+        !is_string($token) ||
+        !is_string($sessionToken) ||
+        strlen($sessionToken) !== 64 ||
+        !ctype_xdigit($sessionToken) ||
+        !hash_equals($sessionToken, $token)
+    ) {
         http_response_code(419);
-        exit('Your form session expired. Please go back and try again.');
+        exit("Your form session expired. Please go back and try again.");
     }
 }
 
 function is_logged_in(): bool
 {
-    return isset($_SESSION['user']['id']);
+    return isset($_SESSION["user"]["id"]);
 }
 
 function require_login(): void
 {
     if (!is_logged_in()) {
-        header('Location: index.php');
-        exit;
+        header("Location: index.php");
+        exit();
     }
 }
 
@@ -80,9 +116,9 @@ function require_resident(): void
 {
     require_login();
 
-    if (($_SESSION['user']['role'] ?? null) !== 'resident') {
+    if (($_SESSION["user"]["role"] ?? null) !== "resident") {
         http_response_code(403);
-        exit('This service is available to resident accounts only.');
+        exit("This service is available to resident accounts only.");
     }
 }
 
@@ -90,8 +126,14 @@ function require_staff(): void
 {
     require_login();
 
-    if (!in_array($_SESSION['user']['role'] ?? null, ['staff', 'admin'], true)) {
+    if (
+        !in_array($_SESSION["user"]["role"] ?? null, ["staff", "admin"], true)
+    ) {
         http_response_code(403);
-        exit('This area is available to staff accounts only.');
+        exit("This area is available to staff accounts only.");
     }
+
+    require_face_verified();
 }
+
+require_once __DIR__ . "/face_auth.php";

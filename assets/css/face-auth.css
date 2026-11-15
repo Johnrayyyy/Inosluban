@@ -1,0 +1,64 @@
+.face-auth-page {
+  min-height: calc(100vh - 80px);
+  padding: 3rem 1rem;
+  background:
+    radial-gradient(circle at 85% 10%, rgba(233, 173, 37, 0.15), transparent 28rem),
+    var(--soft);
+}
+
+.face-auth-card {
+  width: min(100%, 720px);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid rgba(142, 7, 16, 0.1);
+  border-radius: 1.25rem;
+  background: #fff;
+  box-shadow: 0 1.25rem 3rem rgba(33, 26, 28, 0.1);
+}
+
+.face-auth-card h1 {
+  margin-bottom: 0.75rem;
+  color: var(--red-dark);
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+}
+
+.face-auth-video-wrap {
+  overflow: hidden;
+  max-width: 480px;
+  margin: 1.5rem auto;
+  border-radius: 1rem;
+  background: #171717;
+}
+
+.face-auth-video {
+  display: block;
+  width: 100%;
+  min-height: 220px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.face-auth-message {
+  min-height: 1.5rem;
+  font-weight: 600;
+}
+
+.face-auth-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+
+.face-auth-consent input {
+  margin-top: 0.3rem;
+}
+
+.face-auth-note {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #f8f5f3;
+  color: #51484a;
+  font-size: 0.95rem;
+}

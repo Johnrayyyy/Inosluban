@@ -130,6 +130,35 @@ CREATE TABLE user_account (
 COMMENT ON COLUMN user_account.role IS
     'Defaults to resident for self-registration; staff and admin must be assigned by authorized administration code.';
 
+-- 3A. STAFF AND ADMIN FACE AUTHENTICATION
+CREATE TABLE face_auth_credential (
+    user_id INT PRIMARY KEY REFERENCES user_account(user_id)
+        ON DELETE CASCADE,
+    encrypted_template TEXT NOT NULL,
+    nonce TEXT NOT NULL,
+    auth_tag TEXT NOT NULL,
+    consented_at TIMESTAMPTZ NOT NULL,
+    enrolled_by INT REFERENCES user_account(user_id)
+        ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE face_auth_attempt (
+    attempt_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES user_account(user_id)
+        ON DELETE CASCADE,
+    succeeded BOOLEAN NOT NULL,
+    attempted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE face_auth_setup (
+    setup_id SMALLINT PRIMARY KEY CHECK (setup_id = 1),
+    completed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_face_auth_attempt_user_date
+    ON face_auth_attempt (user_id, attempted_at DESC);
+
 -- 3A. PASSWORD RESET TOKENS
 CREATE TABLE password_reset_token (
     reset_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -418,7 +447,7 @@ CREATE TABLE disaster_preparedness (
     )
 );
 
--- 10. NOTIFICATION / SMS DELIVERY LOG
+-- 10. NOTIFICATION DELIVERY LOG
 CREATE TABLE notification_log (
     notification_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 
@@ -431,7 +460,7 @@ CREATE TABLE notification_log (
 
     recipient VARCHAR(255) NOT NULL,
     channel VARCHAR(20) NOT NULL
-        CHECK (channel IN ('SMS', 'Email', 'Portal')),
+        CHECK (channel IN ('Email', 'Portal')),
 
     message TEXT NOT NULL,
 

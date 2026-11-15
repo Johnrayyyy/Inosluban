@@ -1,217 +1,208 @@
-# Barangay Inosluban Resident Portal
+# Barangay Inosluban Portal
 
-A beginner-friendly PHP starter project for a secure login and registration flow.
+A PHP web application for resident services and barangay staff administration.
+Residents can manage their account, request documents, book appointments, and
+submit blotter reports. Staff review requests; administrators manage users,
+announcements, weather information, and disaster alerts.
 
-## Run it with XAMPP
+## How the system fits together
 
-1. Copy this folder to `C:\xampp\htdocs\PHP_project`.
-2. Start **Apache** in the XAMPP Control Panel.
-3. Open [http://localhost/PHP_project/](http://localhost/PHP_project/) in your browser.
-4. Configure the local PostgreSQL connection in `.env.local` (see below), then choose **Create an account** to test registration.
+```mermaid
+flowchart LR
+    Resident[Residents] --> Web[PHP portal]
+    Staff[Staff and admins] --> Web
+    Web --> DB[(PostgreSQL)]
+    Web --> Face[Local face verifier]
+    Web --> Mail[SMTP email]
+    Web --> Weather[Weather providers]
+    Web -. optional AI outlook .-> Gemini[Gemini API]
+    Cron[Scheduled weather jobs] --> Web
+    Cron --> DB
+    DB --> Web
+```
 
-The project uses the PHP version included with XAMPP. Make sure the `pdo_pgsql`
-and `curl` extensions are enabled in `php.ini`. Docker deployments install both
-extensions in the image.
+The portal is served by Apache. It uses PostgreSQL for accounts, requests,
+announcements, alerts, and audit records. Email is sent through the configured
+SMTP service. Weather jobs can run on a schedule; the Gemini-powered outlook is
+optional.
 
-### Local PostgreSQL database
+## Main features
 
-The XAMPP setup uses an isolated PostgreSQL 18 instance on `127.0.0.1:5433`,
-separate from any other PostgreSQL service or remote database. The local
-`portal_inosluban` database is initialized from `schema.sql`. Its connection
-settings are in the ignored `.env.local` file; the app loads these before the
-project `.env`, so local development does not change remote database settings.
-Do not commit either environment file.
+- **Resident services:** registration and login, profile management, document
+  requests, appointments, blotter reports, announcements, and request tracking.
+- **Staff tools:** request review, document preparation and pickup verification,
+  household registry access where authorized, leave requests, and time logs.
+- **Staff and admin sign-in:** password login followed by server-side face
+  matching. Staff shift time starts only after face verification succeeds.
+- **Administration:** staff and account management, audit logs, analytics,
+  announcements, weather dashboards, and disaster preparedness alerts.
+- **Email notifications:** password recovery and verification, document pickup
+  QR codes, weather announcements, and disaster alerts.
+- **Weather information:** current conditions, hourly data, forecasts, and
+  archived daily observations.
 
-The local database runs independently of Apache. If you restart Windows, start
-the local instance from PowerShell before opening the app:
+## Run locally with XAMPP
+
+1. Put the project in `C:\xampp\htdocs\PHP_project` and start Apache.
+2. Install the project dependencies from the project directory:
+
+   ```powershell
+   composer install
+   ```
+
+3. Install Python 3.13 and the face-verification dependencies:
+
+   ```powershell
+   py -3.13 -m venv .venv-face
+   .\.venv-face\Scripts\python.exe -m pip install -r requirements-face.txt
+   ```
+
+   Set `FACE_VERIFIER_COMMAND` in `.env` to the full path of
+   `.venv-face\Scripts\python.exe`. MediaPipe and OpenCV need a supported
+   Python runtime.
+4. Enable the PHP `pdo_pgsql`, `curl`, `openssl`, and `proc_open` features in
+   XAMPP's `php.ini`, then restart Apache.
+5. Create a PostgreSQL database and load the base schema:
+
+   ```powershell
+   psql -U <database-user> -d <database-name> -v ON_ERROR_STOP=1 -f schema.sql
+   ```
+
+6. Configure the environment variables below in the project-root `.env` file
+   (or in the environment used to start PHP).
+7. Open [http://localhost/PHP_project/](http://localhost/PHP_project/) and
+   register a resident account.
+
+The project does not create a PostgreSQL server or database for you. Make sure
+PostgreSQL is running and that the configured database already exists.
+
+## Configuration
+
+Set either `DATABASE_URL` or all five `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
+and `DB_PASSWORD` values. `DATABASE_URL` must be a PostgreSQL connection URL.
+Use a private environment or secret file for credentials; never commit them.
+
+The app loads Render's `/etc/secrets/.env` file and then the project-root
+`.env`. Variables already present in the process environment take precedence.
+
+| Variables | Needed for |
+| --- | --- |
+| `DATABASE_URL` or `DB_*` | PostgreSQL connection; required |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` | Email delivery |
+| `MAIL_FROM_NAME` | Optional display name for outgoing email |
+| `APP_BASE_URL` | Public site URL used in email links; defaults to the hosted portal |
+| `APP_TIMEZONE` | Optional application timezone; defaults to `Asia/Manila` |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Optional admin AI outlook |
+| `WEATHER_LOCATION`, `WEATHER_LATITUDE`, `WEATHER_LONGITUDE`, `WEATHER_TIMEZONE` | Optional weather location overrides |
+| `FACE_VERIFIER_COMMAND` | Python executable used by the local face verifier; defaults to `python` on Windows and `python3` elsewhere |
+| `FACE_ENCRYPTION_KEY` | Required base64-encoded random 32-byte key used to encrypt face templates |
+| `FACE_ENROLLMENT_SETUP_TOKEN` | Required random token for the initial administrator enrollment; only used until an active admin is enrolled |
+| `FACE_ADMIN_RECOVERY_TOKEN` | Required separate random token so an admin can re-enroll only their own face if normal verification is unavailable |
+
+For Brevo, use its SMTP host, SMTP login and key, and a verified sender address.
+On Render, the app uses port `2525` when Brevo is configured with port `587`.
+Other providers use the configured SMTP port. Email features require valid SMTP
+settings.
+
+Generate the face-authentication secrets with PHP and keep their values
+private:
 
 ```powershell
-& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' `
-  -D 'C:\xampp\pgsql-local-data' `
-  -l 'C:\xampp\pgsql-local.log' `
-  -o '-h 127.0.0.1 -p 5433' -w start
+php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"
+php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
 ```
 
-To stop only this local instance:
+Use the first value for `FACE_ENCRYPTION_KEY`, the second for
+`FACE_ENROLLMENT_SETUP_TOKEN`, and the third for `FACE_ADMIN_RECOVERY_TOKEN`.
+Back up the encryption key securely: losing it
+makes stored face templates unusable. Do not put any of these values in source
+control.
+For local XAMPP, set `FACE_VERIFIER_COMMAND` to the full path of the Python
+executable in `.venv-face\Scripts\python.exe`.
+
+After setting up the database and secrets, sign in with an active admin
+account and follow the one-time setup page. Provide its setup token and complete
+the camera steps. Then use **Face enrollment** in the staff directory to enroll
+staff and any additional admins. Keep the recovery token with the
+system operator; it bypasses normal face matching only to re-enroll that same
+admin, and requires the admin password plus physical possession of the token.
+Enrolled staff/admins must sign in with their
+password and pass the camera check. Use HTTPS in deployment (localhost is
+allowed for local camera access).
+
+Face frames are processed in memory by the server and are not saved. PostgreSQL
+stores the encrypted OpenCV face template, enrollment metadata, and minimal
+authentication-attempt records. The browser uses MediaPipe for camera guidance;
+PHP invokes the Python MediaPipe and OpenCV verifier to perform the actual face
+match. This challenge is a
+best-effort liveness check, not certified anti-spoofing: it cannot guarantee
+protection from sophisticated video replay, masks, or deepfakes. Keep passwords
+required and limit enrollment to supervised staff/admin setup. An administrator
+can re-enroll a staff member who cannot pass the face check.
+The server-side MediaPipe landmark model is bundled under protected storage and
+its SHA-256 checksum is verified before use.
+
+## Deploy with Docker / Render
+
+The [Dockerfile](./Dockerfile) builds the PHP 8.3 Apache app, installs Composer
+dependencies, creates an isolated Python environment for face verification,
+and enables PostgreSQL and cURL extensions. Configure the database, email,
+face-authentication secrets, and any optional AI/weather variables in the
+deployment environment. For Render, use a secret `.env` file or service
+environment variables, and use the database's internal URL when the services
+are in the same region.
+
+### Optional scheduled weather jobs
+
+The admin weather page can refresh weather data on demand. For automatic
+updates, configure these Render Cron Jobs to use the same repository, branch,
+Dockerfile, region, and database settings as the web service:
+
+| Schedule (UTC) | Command | Purpose |
+| --- | --- | --- |
+| `0 * * * *` | `php /var/www/html/weather_cron.php` | Fetch current conditions, hourly data, and forecast |
+| `5 16 * * *` | `php /var/www/html/weather_daily_cron.php` | Archive the previous Philippine calendar day's observations |
+
+The daily job runs at 12:05 AM Philippine time. These scripts are command-line
+only and cannot be run as web pages. Weather forecasts may create draft
+announcements for an administrator to review before publication.
+
+## Security and data
+
+- Passwords are hashed; SQL uses PDO prepared statements.
+- State-changing forms use session-based CSRF tokens.
+- Role checks restrict resident, staff, and administrator features.
+- Staff and admin routes require a recent face verification after password
+  login. Face templates are encrypted at rest with AES-256-GCM; original camera
+  frames are not retained.
+- User-provided output is escaped before it is rendered as HTML.
+- Remote PostgreSQL connections require SSL.
+- Keep `.env` and all database or mail credentials private.
+
+The schema in [schema.sql](./schema.sql) defines the base PostgreSQL tables; the
+application also applies selected backward-compatible schema updates when
+features are used. `schema.sql` is a schema backup, not a backup of resident
+data. Back up the database separately.
+
+## Project layout
+
+- `index.php`, `register.php`, and other root PHP files: portal pages and
+  request handlers.
+- `includes/`: shared database/session helpers, authorization, notifications,
+  email templates, and business logic.
+- `config/`: environment configuration and SMTP mailer.
+- `assets/`: CSS, JavaScript, and images.
+- `templates/emails/`: HTML email templates.
+- `storage/`: protected document templates and uploaded files.
+- `schema.sql`: PostgreSQL base schema.
+
+For a feature overview, see **Main features** above. Start with `index.php` to
+trace the login flow, `includes/bootstrap.php` for shared session/database
+setup, and the relevant page in the project root for a specific service.
+
+Run the face-verifier unit tests with:
 
 ```powershell
-& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' `
-  -D 'C:\xampp\pgsql-local-data' stop -m fast
+py -3.13 -m unittest discover -s tests
 ```
-
-Document request confirmations and profile verification emails use PHPMailer
-over SMTP. Docker deployments install Composer dependencies as part of the
-image build. For a local XAMPP setup, install the dependency from the project
-folder:
-
-```text
-composer install
-```
-
-The application loads configuration from Render's `/etc/secrets/.env` file
-first, then the project-root `.env` file. Values set in the service's
-environment take precedence over both files. For a Render-hosted web service,
-open **Environment → Secret Files**, add a file named `.env`, and put your
-settings in it. Use the database's **Internal Database URL** when the web
-service and database are in the same region:
-
-```text
-DATABASE_URL=postgresql://username:password@hostname:5432/database
-```
-
-The app also supports individual `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
-and `DB_PASSWORD` settings instead of `DATABASE_URL`. For local XAMPP, use a
-separate PostgreSQL database and put its credentials in `.env.local`; this file
-overrides the project `.env` for local development and is ignored by Git. Copy
-`.env.local.example`, then change the password to the local database user's
-password. Never commit `.env` or `.env.local`, or include them in the Docker
-image. For email, set
-`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM`, and
-`MAIL_FROM_NAME`. For Brevo, use `smtp-relay.brevo.com`, your Brevo SMTP login
-and SMTP key, and a sender email verified in Brevo as `MAIL_FROM`. On Render,
-the app automatically switches Brevo's configured port `587` to `2525`
-because Render blocks outbound SMTP on port `587`. Other SMTP providers keep
-using their configured port.
-
-SMS notifications use the PHILSMS API. Set `PHILSMS_API_KEY` to the API key
-from your PHILSMS dashboard and `PHILSMS_SENDER_ID` to your approved sender ID.
-When a document request is marked ready, the resident gets a short pickup text;
-when an admin approves a weather forecast announcement, one short text is sent
-to each active resident with a valid Philippine mobile number on file. The
-messages use plain ASCII and stay below 160 characters to minimize SMS credits.
-Admins can publish and resolve disaster-preparedness alerts from the dedicated
-Disaster Preparedness navigation page and send them to active residents. The
-analytics dashboard shows active-alert counts and a short alert summary. Each
-SMS attempt is recorded for delivery review. SMS is optional; sending is
-unavailable until both settings are configured.
-
-The login page's password recovery sends a one-time email link that expires
-after one hour. The default application URL is
-`https://inosluban.onrender.com`; set `APP_BASE_URL` to the deployed origin (or
-its `index.php` URL) when deploying elsewhere. Email links to application routes
-are built from that origin. The reset-token table is also included in
-`schema.sql` and is created automatically when password recovery is first used.
-Document requests can be cancelled by their resident only while Pending. When
-staff marks a document request Completed (ready for pickup), the portal emails a
-locally generated QR code in the branded email template. The QR opens the
-deployed staff verification route. An authenticated staff member scans it,
-checks the request details against the person's valid photo ID, then confirms release.
-Document pickup tokens are single-use; the portal creates the token table and
-adds the Released status constraint automatically for existing databases.
-Staff and admins can prepare the supplied Clearance, Indigency, and Residency
-PDF originals from a request, edit the printout fields, and open the completed
-PDF for printing. Printout edits do not change the resident's submitted record.
-The source files live in `storage/document_templates/`, which denies direct web
-access; printing is handled by the authenticated staff-only route. Document
-request lists show open requests by default, provide completed/released and all
-request filters, and paginate ten records at a time. Admin audit logs can be
-searched across actor, action, record, table, and details, with Philippine-date
-filters.
-The admin weather page fetches Open-Meteo current conditions, a seven-day
-forecast, and hourly data, with MET Norway as a no-key fallback if Open-Meteo
-is unavailable or rate-limited. Docker deployments install PHP cURL for these
-connections. The admin weather dashboard reads its latest complete
-current/hourly/daily payload from the `weather_snapshot` table; refresh runs
-independently of resident or admin sign-in. A successful admin login also
-triggers a background refresh from the admin dashboard, with a ten-minute
-cooldown and a PostgreSQL advisory lock to prevent overlapping requests or
-repeated logins from exhausting provider limits.
-
-To enable the hourly schedule on Render, create a **Cron Job** for this same
-repository and deployment branch. Use the same Dockerfile and region as the web
-service, set the schedule to `0 * * * *` (hourly, UTC), and set the command to:
-
-```text
-php /var/www/html/weather_cron.php
-```
-
-Attach the same environment group as the web service, or configure the same
-`DATABASE_URL` and weather settings. The cron job does not need SMTP credentials.
-It writes the current, hourly, and daily forecast payload to PostgreSQL; the
-dashboard displays the latest successful snapshot and reports refresh failures.
-After the cron job's first run, the dashboard updates automatically without
-anyone pressing a fetch button or being signed in.
-Add a second scheduled job at `5 16 * * *` UTC (12:05 AM Philippine time) with
-the command:
-
-```text
-php /var/www/html/weather_daily_cron.php
-```
-
-The daily job archives all weather observations collected during the previous
-Philippine calendar day, including temperature, rainfall, wind, cloud cover,
-condition summaries, and source timestamps. It is safe to rerun and updates
-that day's archive instead of creating duplicates. The admin weather dashboard
-shows the archived daily history. Forecast rain and thunderstorms create
-pending announcement drafts; only an admin can approve and publish or dismiss
-those drafts from Manage Announcements.
-The admin Dashboard route opens `admin_analytics.php`. The analytics page
-summarizes service, weather-advisory, alert, notification, and staff-time data.
-Its monthly activity chart compares document requests, blotter reports, and
-appointment submissions. Staff time logs use activity heartbeats and stop
-counting after ten minutes without activity; logging out closes the active log.
-Hourly weather refreshes are also recorded as observations, with recent saved
-advisories imported as initial history for the weather trend.
-Its AI outlook sends only aggregated metrics and the latest weather forecast to
-Gemini; no resident identities, account usernames, passwords, or contact details
-are included. Household analytics summarize member counts, household sizes,
-purok distribution, and age bands for active residents plus unlinked household
-members. Completing a document request automatically marks its fixed ₱20.00
-fee as paid; the dashboard reports these recorded fees as collected revenue.
-The deployment applies idempotent database migrations for the payment fields.
-The registration terms are a working draft based on Philippine privacy
-requirements. Confirm the barangay's privacy contact, retention schedule, and
-service-specific data practices with its Data Protection Officer or legal
-adviser before relying on them as a final legal policy.
-
-Admins can assign newly created staff as General Staff or BHW. The Household
-Registry is available only to admins and BHW accounts. BHW accounts cannot
-access document, blotter, or appointment requests. The registry records
-household address, purok, an optional house number unique within its purok,
-household head, and member roster details; residents can be searched by name
-across household rosters. BHWs can link
-registered residents or add unregistered people. On successful resident account
-creation, the system links an unregistered roster entry only when the full name
-and birthdate match exactly one household member. Ambiguous matches are left
-unlinked for manual assignment.
-
-Staff and admin accounts can open **My Account** from the staff navigation to
-upload a JPG, PNG, or WEBP profile photo (up to 2 MB) and change their password
-after confirming the current password. Profile image bytes are stored in the
-PostgreSQL account record so photos persist across deployments and instance
-restarts. The profile page adds the image columns automatically to existing
-databases.
-
-## Folder guide
-
-- `index.php` — login page and login processing.
-- `register.php` — registration page and validation.
-- `dashboard.php` — the first page shown after login.
-- `admin_analytics.php` — aggregate admin dashboard and AI outlook.
-- `staff_profile.php` — authenticated staff/admin profile photo and password settings.
-- `staff_profile_photo.php` — authenticated profile image delivery.
-- `staff_document_templates.php` — staff-only field editing and PDF generation, opened from document request details; request-list View opens the populated PDF in a new tab.
-- `logout.php` — safely ends the session.
-- `config/` — application settings.
-- `includes/bootstrap.php` — starts sessions, connects to SQLite, and contains shared security helpers.
-- `includes/` — reusable page layout and alerts.
-- `assets/css/` — responsive styling.
-- `assets/js/` — small browser enhancements such as show/hide password.
-- `assets/images/` — the supplied login reference, `barangay.jpg` page background, and barangay logo.
-- `database/` — private SQLite storage (blocked from direct Apache access).
-- `storage/document_templates/` — original PDFs, blocked from direct Apache access.
-
-## Security included
-
-- Passwords are stored with `password_hash()` and checked with `password_verify()`.
-- Database queries use PDO prepared statements.
-- POST forms use a session-based CSRF token.
-- Session IDs are regenerated after successful login.
-- Output is escaped with `htmlspecialchars()` to reduce XSS risk.
-- Server-side validation is applied even when browser validation is bypassed.
-- The database folder is denied by Apache.
-- Original document templates are denied by Apache and are only used by the staff-authenticated PDF route.
-
-## Growing the project
-
-When adding a feature, keep the same pattern: put database logic in a small helper or service, validate all incoming values on the server, use prepared statements, and reuse the shared header/footer. Add new tables through a migration step once the project becomes larger.

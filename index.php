@@ -1,26 +1,31 @@
 <?php
-require_once __DIR__ . '/includes/bootstrap.php';
-require_once __DIR__ . '/includes/staff.php';
-require_once __DIR__ . '/config/config.php';
-require_once __DIR__ . '/config/mailer.php';
+require_once __DIR__ . "/includes/bootstrap.php";
+require_once __DIR__ . "/includes/staff.php";
+require_once __DIR__ . "/config/config.php";
+require_once __DIR__ . "/config/mailer.php";
 
 if (is_logged_in()) {
-    $destination = match ($_SESSION['user']['role'] ?? 'resident') {
-        'admin' => 'admin_analytics.php',
-        'staff' => 'staff_dashboard.php',
-        default => 'dashboard.php',
-    };
-    header('Location: ' . $destination);
-    exit;
+    $role = $_SESSION["user"]["role"] ?? "resident";
+    if (in_array($role, ["staff", "admin"], true)) {
+        ensure_face_auth_schema();
+        $destination =
+            $role === "admin" && face_auth_initial_setup_available()
+                ? "face_enroll.php?initial=1"
+                : "face_verify.php";
+    } else {
+        $destination = "dashboard.php";
+    }
+    header("Location: " . $destination);
+    exit();
 }
 
 $errors = [];
-$oldEmail = '';
-$recoveryEmail = '';
-$recoveryMessage = '';
-$resetToken = trim((string) ($_GET['reset_token'] ?? ''));
+$oldEmail = "";
+$recoveryEmail = "";
+$recoveryMessage = "";
+$resetToken = trim((string) ($_GET["reset_token"] ?? ""));
 $resetTokenValid = false;
-$showRecoveryModal = $resetToken !== '';
+$showRecoveryModal = $resetToken !== "";
 
 function ensure_password_reset_schema(): void
 {
@@ -31,33 +36,36 @@ function ensure_password_reset_schema(): void
             token_hash CHAR(64) NOT NULL UNIQUE,
             expires_at TIMESTAMPTZ NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )"
+        )",
     );
 }
 
-if ($resetToken !== '') {
-    header('Referrer-Policy: no-referrer');
+if ($resetToken !== "") {
+    header("Referrer-Policy: no-referrer");
     ensure_password_reset_schema();
     $tokenLookup = db()->prepare(
         'SELECT reset_id FROM password_reset_token
-         WHERE token_hash = :token_hash AND expires_at > CURRENT_TIMESTAMP'
+         WHERE token_hash = :token_hash AND expires_at > CURRENT_TIMESTAMP',
     );
-    $tokenLookup->execute(['token_hash' => hash('sha256', $resetToken)]);
+    $tokenLookup->execute(["token_hash" => hash("sha256", $resetToken)]);
     $resetTokenValid = (bool) $tokenLookup->fetchColumn();
     if (!$resetTokenValid) {
-        $errors[] = 'This password reset link is invalid or has expired. Request a new link below.';
+        $errors[] =
+            "This password reset link is invalid or has expired. Request a new link below.";
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verify_csrf_token($_POST['csrf_token'] ?? '');
-    $action = (string) ($_POST['action'] ?? 'login');
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    verify_csrf_token($_POST["csrf_token"] ?? "");
+    $action = (string) ($_POST["action"] ?? "login");
 
-    if ($action === 'request_reset') {
+    if ($action === "request_reset") {
         $showRecoveryModal = true;
-        $recoveryEmail = strtolower(trim((string) ($_POST['recovery_email'] ?? '')));
+        $recoveryEmail = strtolower(
+            trim((string) ($_POST["recovery_email"] ?? "")),
+        );
         if (!filter_var($recoveryEmail, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'Enter a valid email address.';
+            $errors[] = "Enter a valid email address.";
         } else {
             ensure_password_reset_schema();
             $accountLookup = db()->prepare(
@@ -67,9 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  WHERE LOWER(r.email) = LOWER(:email)
                    AND ua.account_status = 'active'
                    AND ua.role = 'resident'
-                 LIMIT 1"
+                 LIMIT 1",
             );
-            $accountLookup->execute(['email' => $recoveryEmail]);
+            $accountLookup->execute(["email" => $recoveryEmail]);
             $userId = $accountLookup->fetchColumn();
 
             if ($userId !== false) {
@@ -77,50 +85,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     "SELECT 1 FROM password_reset_token
                      WHERE user_id = :user_id
                        AND created_at > CURRENT_TIMESTAMP - INTERVAL '1 minute'
-                     LIMIT 1"
+                     LIMIT 1",
                 );
-                $recentReset->execute(['user_id' => $userId]);
+                $recentReset->execute(["user_id" => $userId]);
 
                 if (!$recentReset->fetchColumn()) {
                     $token = bin2hex(random_bytes(32));
-                    $tokenHash = hash('sha256', $token);
-                    $removeOldTokens = db()->prepare('DELETE FROM password_reset_token WHERE user_id = :user_id');
-                    $removeOldTokens->execute(['user_id' => $userId]);
+                    $tokenHash = hash("sha256", $token);
+                    $removeOldTokens = db()->prepare(
+                        "DELETE FROM password_reset_token WHERE user_id = :user_id",
+                    );
+                    $removeOldTokens->execute(["user_id" => $userId]);
                     $saveToken = db()->prepare(
                         "INSERT INTO password_reset_token (user_id, token_hash, expires_at)
-                         VALUES (:user_id, :token_hash, CURRENT_TIMESTAMP + INTERVAL '1 hour')"
+                         VALUES (:user_id, :token_hash, CURRENT_TIMESTAMP + INTERVAL '1 hour')",
                     );
-                    $saveToken->execute(['user_id' => $userId, 'token_hash' => $tokenHash]);
+                    $saveToken->execute([
+                        "user_id" => $userId,
+                        "token_hash" => $tokenHash,
+                    ]);
 
-                    $resetUrl = rtrim(APP_BASE_URL, '/') . '/index.php?reset_token=' . rawurlencode($token);
-                    $safeResetUrl = htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8');
+                    $resetUrl =
+                        rtrim(APP_BASE_URL, "/") .
+                        "/index.php?reset_token=" .
+                        rawurlencode($token);
+                    $safeResetUrl = htmlspecialchars(
+                        $resetUrl,
+                        ENT_QUOTES,
+                        "UTF-8",
+                    );
                     $sent = sendEmail(
                         $recoveryEmail,
-                        'Reset your Barangay Inosluban account password',
-                        '<p>We received a request to reset the password for your Barangay Inosluban account.</p>'
-                        . '<p><a href="' . $safeResetUrl . '">Reset your password</a></p>'
-                        . '<p>If the link does not open, copy this address into your browser: ' . $safeResetUrl . '</p>'
-                        . '<p>This link expires in one hour and can only be used once. If you did not request this, you can ignore this email.</p>'
+                        "Reset your Barangay Inosluban account password",
+                        "<p>We received a request to reset the password for your Barangay Inosluban account.</p>" .
+                            '<p><a href="' .
+                            $safeResetUrl .
+                            '">Reset your password</a></p>' .
+                            "<p>If the link does not open, copy this address into your browser: " .
+                            $safeResetUrl .
+                            "</p>" .
+                            "<p>This link expires in one hour and can only be used once. If you did not request this, you can ignore this email.</p>",
                     );
                     if (!$sent) {
-                        $removeFailedToken = db()->prepare('DELETE FROM password_reset_token WHERE token_hash = :token_hash');
-                        $removeFailedToken->execute(['token_hash' => $tokenHash]);
+                        $removeFailedToken = db()->prepare(
+                            "DELETE FROM password_reset_token WHERE token_hash = :token_hash",
+                        );
+                        $removeFailedToken->execute([
+                            "token_hash" => $tokenHash,
+                        ]);
                     }
                 }
             }
 
-            $recoveryMessage = 'If an active resident account uses that email and mail delivery is available, a password reset link will be sent. Check your inbox and spam folder.';
+            $recoveryMessage =
+                "If an active resident account uses that email and mail delivery is available, a password reset link will be sent. Check your inbox and spam folder.";
         }
-    } elseif ($action === 'reset_password') {
+    } elseif ($action === "reset_password") {
         $showRecoveryModal = true;
-        $resetToken = trim((string) ($_POST['reset_token'] ?? ''));
-        $password = (string) ($_POST['new_password'] ?? '');
-        $confirmation = (string) ($_POST['password_confirmation'] ?? '');
-        if ($password === '' || strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[0-9]/', $password)) {
-            $errors[] = 'Password must be at least 8 characters and include one uppercase letter and one number.';
+        $resetToken = trim((string) ($_POST["reset_token"] ?? ""));
+        $password = (string) ($_POST["new_password"] ?? "");
+        $confirmation = (string) ($_POST["password_confirmation"] ?? "");
+        if (
+            $password === "" ||
+            strlen($password) < 8 ||
+            !preg_match("/[A-Z]/", $password) ||
+            !preg_match("/[0-9]/", $password)
+        ) {
+            $errors[] =
+                "Password must be at least 8 characters and include one uppercase letter and one number.";
         }
         if ($password !== $confirmation) {
-            $errors[] = 'The password confirmation does not match.';
+            $errors[] = "The password confirmation does not match.";
         }
 
         if ($errors === []) {
@@ -131,25 +166,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tokenLookup = $pdo->prepare(
                     'SELECT reset_id, user_id FROM password_reset_token
                      WHERE token_hash = :token_hash AND expires_at > CURRENT_TIMESTAMP
-                     FOR UPDATE'
+                     FOR UPDATE',
                 );
-                $tokenLookup->execute(['token_hash' => hash('sha256', $resetToken)]);
+                $tokenLookup->execute([
+                    "token_hash" => hash("sha256", $resetToken),
+                ]);
                 $reset = $tokenLookup->fetch();
                 if (!$reset) {
                     $pdo->rollBack();
-                    $errors[] = 'This password reset link is invalid or has expired. Request a new link below.';
+                    $errors[] =
+                        "This password reset link is invalid or has expired. Request a new link below.";
                 } else {
-                    $updatePassword = $pdo->prepare('UPDATE user_account SET password_hash = :password_hash WHERE user_id = :user_id');
+                    $updatePassword = $pdo->prepare(
+                        "UPDATE user_account SET password_hash = :password_hash WHERE user_id = :user_id",
+                    );
                     $updatePassword->execute([
-                        'password_hash' => password_hash($password, PASSWORD_DEFAULT),
-                        'user_id' => $reset['user_id'],
+                        "password_hash" => password_hash(
+                            $password,
+                            PASSWORD_DEFAULT,
+                        ),
+                        "user_id" => $reset["user_id"],
                     ]);
-                    $removeTokens = $pdo->prepare('DELETE FROM password_reset_token WHERE user_id = :user_id');
-                    $removeTokens->execute(['user_id' => $reset['user_id']]);
+                    $removeTokens = $pdo->prepare(
+                        "DELETE FROM password_reset_token WHERE user_id = :user_id",
+                    );
+                    $removeTokens->execute(["user_id" => $reset["user_id"]]);
                     $pdo->commit();
-                    $_SESSION['success'] = 'Your password has been reset. You can now log in.';
-                    header('Location: index.php');
-                    exit;
+                    $_SESSION["success"] =
+                        "Your password has been reset. You can now log in.";
+                    header("Location: index.php");
+                    exit();
                 }
             } catch (Throwable $exception) {
                 if ($pdo->inTransaction()) {
@@ -162,24 +208,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ensure_password_reset_schema();
             $tokenLookup = db()->prepare(
                 'SELECT reset_id FROM password_reset_token
-                 WHERE token_hash = :token_hash AND expires_at > CURRENT_TIMESTAMP'
+                 WHERE token_hash = :token_hash AND expires_at > CURRENT_TIMESTAMP',
             );
-            $tokenLookup->execute(['token_hash' => hash('sha256', $resetToken)]);
+            $tokenLookup->execute([
+                "token_hash" => hash("sha256", $resetToken),
+            ]);
             $resetTokenValid = (bool) $tokenLookup->fetchColumn();
         }
     } else {
-        $oldEmail = trim((string) ($_POST['username'] ?? ''));
-        $password = (string) ($_POST['password'] ?? '');
+        $oldEmail = trim((string) ($_POST["username"] ?? ""));
+        $password = (string) ($_POST["password"] ?? "");
 
-        if ($oldEmail === '') {
-            $errors[] = 'Please enter your username or email address.';
+        if ($oldEmail === "") {
+            $errors[] = "Please enter your username or email address.";
         }
-        if ($password === '') {
-            $errors[] = 'Please enter your password.';
+        if ($password === "") {
+            $errors[] = "Please enter your password.";
         }
     }
 
-    if ($action === 'login' && $errors === []) {
+    if ($action === "login" && $errors === []) {
         $statement = db()->prepare(
             "SELECT ua.user_id, ua.role, ua.resident_id, ua.password_hash, ua.account_status, s.staff_id,
                     COALESCE(r.first_name, s.first_name) AS first_name,
@@ -190,50 +238,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              LEFT JOIN resident r ON r.resident_id = ua.resident_id
              LEFT JOIN staff s ON s.user_id = ua.user_id
              WHERE ua.username = :identifier OR r.email = :email
-             LIMIT 1"
+             LIMIT 1",
         );
-        $statement->execute(['identifier' => $oldEmail, 'email' => strtolower($oldEmail)]);
+        $statement->execute([
+            "identifier" => $oldEmail,
+            "email" => strtolower($oldEmail),
+        ]);
         $user = $statement->fetch();
 
-        if ($user && $user['account_status'] === 'active' && password_verify($password, $user['password_hash'])) {
-            $timeLog = $user['role'] === 'staff'
-                ? staff_start_time_log((int) $user['user_id'])
-                : null;
+        if (
+            $user &&
+            $user["account_status"] === "active" &&
+            password_verify($password, $user["password_hash"])
+        ) {
             session_regenerate_id(true);
-            $_SESSION['user'] = [
-                'id' => (int) $user['user_id'],
-                'role' => $user['role'],
-                'resident_id' => (int) $user['resident_id'],
-                'staff_id' => (int) ($user['staff_id'] ?? 0),
-                'full_name' => trim(implode(' ', array_filter([$user['first_name'], $user['middle_name'], $user['last_name']]))),
-                'email' => $user['email'],
+            unset($_SESSION["csrf_token"]);
+            unset(
+                $_SESSION["staff_time_log_id"],
+                $_SESSION["face_verified_at"],
+                $_SESSION["face_verified_user_id"],
+                $_SESSION["face_challenge"],
+            );
+            csrf_token();
+            $_SESSION["user"] = [
+                "id" => (int) $user["user_id"],
+                "role" => $user["role"],
+                "resident_id" => (int) $user["resident_id"],
+                "staff_id" => (int) ($user["staff_id"] ?? 0),
+                "full_name" => trim(
+                    implode(
+                        " ",
+                        array_filter([
+                            $user["first_name"],
+                            $user["middle_name"],
+                            $user["last_name"],
+                        ]),
+                    ),
+                ),
+                "email" => $user["email"],
             ];
-            if ($timeLog !== null) {
-                $_SESSION['staff_time_log_id'] = (int) $timeLog['time_log_id'];
-            }
-            if ($user['role'] === 'admin') {
-                $_SESSION['weather_refresh_on_login'] = true;
+            if ($user["role"] === "admin") {
+                unset($_SESSION["weather_refresh_on_login"]);
             } else {
-                unset($_SESSION['weather_refresh_on_login']);
+                unset($_SESSION["weather_refresh_on_login"]);
             }
-            $destination = match ($user['role']) {
-                'admin' => 'admin_analytics.php',
-                'staff' => 'staff_dashboard.php',
-                default => 'dashboard.php',
-            };
-            header('Location: ' . $destination);
-            exit;
+            if (in_array($user["role"], ["staff", "admin"], true)) {
+                ensure_face_auth_schema();
+                $destination =
+                    $user["role"] === "admin" &&
+                    face_auth_initial_setup_available()
+                        ? "face_enroll.php?initial=1"
+                        : "face_verify.php";
+            } else {
+                $destination = "dashboard.php";
+            }
+            header("Location: " . $destination);
+            exit();
         }
 
-        $errors[] = $user && $user['account_status'] !== 'active'
-            ? 'This account is inactive. Contact the administrator.'
-            : 'The email or password is incorrect.';
+        $errors[] =
+            $user && $user["account_status"] !== "active"
+                ? "This account is inactive. Contact the administrator."
+                : "The email or password is incorrect.";
     }
 }
 
-$pageTitle = 'Log in';
+$pageTitle = "Log in";
 $hideSiteFooter = true;
-require __DIR__ . '/includes/header.php';
+require __DIR__ . "/includes/header.php";
 ?>
 <main class="auth-page login-page">
     <div class="container py-4 py-lg-5">
@@ -253,81 +325,137 @@ require __DIR__ . '/includes/header.php';
                     </div>
                 </div>
 
-                <?php if ($errors !== []): ?><div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-circle me-2"></i><?= e(implode(' ', $errors)) ?></div><?php endif; ?>
-                <?php if (!empty($_SESSION['success'])): ?><div class="alert alert-success" role="alert"><i class="bi bi-check-circle me-2"></i><?= e((string) $_SESSION['success']) ?></div><?php unset($_SESSION['success']); endif; ?>
+                <?php if (
+                    $errors !== []
+                ): ?><div class="alert alert-danger" role="alert"><i
+                        class="bi bi-exclamation-circle me-2"></i><?= e(
+    implode(" ", $errors),
+) ?></div><?php endif; ?>
+                <?php if (
+                    !empty($_SESSION["success"])
+                ): ?><div class="alert alert-success" role="alert"><i
+                        class="bi bi-check-circle me-2"></i><?= e(
+    (string) $_SESSION["success"],
+) ?></div><?php unset($_SESSION["success"]);endif; ?>
 
                 <form method="post" action="index.php" novalidate>
-                    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                    <input type="hidden" name="csrf_token" value="<?= e(
+                        csrf_token(),
+                    ) ?>">
                     <input type="hidden" name="action" value="login">
                     <div class="mb-3">
                         <label for="username" class="visually-hidden">Email or username</label>
                         <div class="input-with-icon">
                             <i class="bi bi-envelope"></i>
-                            <input type="text" class="form-control <?= $errors && $oldEmail === '' ? 'is-invalid' : '' ?>" id="username" name="username" placeholder="Email or Username" value="<?= e($oldEmail) ?>" autocomplete="username" required>
+                            <input type="text" class="form-control <?= $errors &&
+                            $oldEmail === ""
+                                ? "is-invalid"
+                                : "" ?>" id="username" name="username"
+                                placeholder="Email or Username" value="<?= e(
+    $oldEmail,
+) ?>" autocomplete="username" required>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="password" class="visually-hidden">Password</label>
                         <div class="password-field input-with-icon">
                             <i class="bi bi-lock"></i>
-                            <input type="password" class="form-control" id="password" name="password" placeholder="Password" autocomplete="current-password" required>
-                            <button type="button" class="password-toggle" data-password-toggle="#password" aria-label="Show password"><i class="bi bi-eye"></i></button>
+                            <input type="password" class="form-control" id="password"
+                                name="password" placeholder="Password"
+                                autocomplete="current-password" required>
+                            <button type="button" class="password-toggle"
+                                data-password-toggle="#password" aria-label="Show password"><i
+                                    class="bi bi-eye"></i></button>
                         </div>
                     </div>
                     <div class="login-options mb-3">
                         <label class="form-check">
-                            <input type="checkbox" class="form-check-input" name="remember" value="1">
+                            <input type="checkbox" class="form-check-input" name="remember"
+                                value="1">
                             <span class="form-check-label">Remember me</span>
                         </label>
-                        <button class="auth-link-button" type="button" data-bs-toggle="modal" data-bs-target="#passwordRecoveryModal">Forgot password?</button>
+                        <button class="auth-link-button" type="button" data-bs-toggle="modal"
+                            data-bs-target="#passwordRecoveryModal">Forgot password?</button>
                     </div>
-                    <button class="btn btn-primary w-100 login-submit" type="submit">Log In <i class="bi bi-arrow-right ms-2"></i></button>
+                    <button class="btn btn-primary w-100 login-submit" type="submit">Log In <i
+                            class="bi bi-arrow-right ms-2"></i></button>
                 </form>
 
-                <p class="text-center mt-3 mb-0 small login-signup">Don't have an account? <a href="register.php">Sign up</a></p>
+                <p class="text-center mt-3 mb-0 small login-signup">Don't have an account? <a
+                        href="register.php">Sign up</a></p>
             </section>
         </div>
     </div>
 </main>
 
-<div class="modal fade auth-modal" id="passwordRecoveryModal" tabindex="-1" aria-labelledby="passwordRecoveryTitle" aria-hidden="true" <?= $showRecoveryModal ? 'data-open-modal="true"' : '' ?>>
+<div class="modal fade auth-modal" id="passwordRecoveryModal" tabindex="-1"
+    aria-labelledby="passwordRecoveryTitle" aria-hidden="true" <?= $showRecoveryModal
+    ? 'data-open-modal="true"'
+    : "" ?>>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title fs-5" id="passwordRecoveryTitle"><?= $resetTokenValid ? 'Choose a new password' : 'Reset your password' ?></h2>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h2 class="modal-title fs-5" id="passwordRecoveryTitle"><?= $resetTokenValid
+                    ? "Choose a new password"
+                    : "Reset your password" ?></h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <?php if ($errors !== []): ?>
-                    <div class="alert alert-danger" role="alert">
-                        <i class="bi bi-exclamation-circle me-2"></i><?= e(implode(' ', $errors)) ?>
-                    </div>
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-circle me-2"></i><?= e(
+                            implode(" ", $errors),
+                        ) ?>
+                </div>
                 <?php endif; ?>
                 <?php if ($resetTokenValid): ?>
-                    <p>Enter a new password for your account. Use at least 8 characters with one uppercase letter and one number.</p>
-                    <form method="post" action="index.php" novalidate>
-                        <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
-                        <input type="hidden" name="action" value="reset_password">
-                        <input type="hidden" name="reset_token" value="<?= e($resetToken) ?>">
-                        <div class="mb-3"><label for="new_password" class="form-label">New password</label><input class="form-control" type="password" id="new_password" name="new_password" autocomplete="new-password" required></div>
-                        <div class="mb-3"><label for="password_confirmation" class="form-label">Confirm new password</label><input class="form-control" type="password" id="password_confirmation" name="password_confirmation" autocomplete="new-password" required></div>
-                        <button class="btn btn-primary w-100" type="submit">Save new password</button>
-                    </form>
+                <p>Enter a new password for your account. Use at least 8 characters with one
+                    uppercase letter and one number.</p>
+                <form method="post" action="index.php" novalidate>
+                    <input type="hidden" name="csrf_token" value="<?= e(
+                            csrf_token(),
+                        ) ?>">
+                    <input type="hidden" name="action" value="reset_password">
+                    <input type="hidden" name="reset_token" value="<?= e(
+                            $resetToken,
+                        ) ?>">
+                    <div class="mb-3"><label for="new_password" class="form-label">New
+                            password</label><input class="form-control" type="password"
+                            id="new_password" name="new_password" autocomplete="new-password"
+                            required></div>
+                    <div class="mb-3"><label for="password_confirmation" class="form-label">Confirm
+                            new password</label><input class="form-control" type="password"
+                            id="password_confirmation" name="password_confirmation"
+                            autocomplete="new-password" required></div>
+                    <button class="btn btn-primary w-100" type="submit">Save new password</button>
+                </form>
                 <?php else: ?>
-                    <p>Enter the email address linked to your resident account. If it matches an active account, we will email you a one-time reset link that expires after one hour.</p>
-                    <?php if ($recoveryMessage !== ''): ?><div class="alert alert-success" role="status"><?= e($recoveryMessage) ?></div><?php endif; ?>
-                    <form method="post" action="index.php" novalidate>
-                        <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
-                        <input type="hidden" name="action" value="request_reset">
-                        <div class="mb-3">
-                            <label for="recovery_email" class="form-label">Account email</label>
-                            <input class="form-control" type="email" id="recovery_email" name="recovery_email" value="<?= e($recoveryEmail) ?>" autocomplete="email" required>
-                        </div>
-                        <button class="btn btn-primary w-100" type="submit">Email reset link</button>
-                    </form>
+                <p>Enter the email address linked to your resident account. If it matches an active
+                    account, we will email you a one-time reset link that expires after one hour.
+                </p>
+                <?php if (
+                        $recoveryMessage !== ""
+                    ): ?><div class="alert alert-success" role="status"><?= e(
+    $recoveryMessage,
+) ?></div><?php endif; ?>
+                <form method="post" action="index.php" novalidate>
+                    <input type="hidden" name="csrf_token" value="<?= e(
+                            csrf_token(),
+                        ) ?>">
+                    <input type="hidden" name="action" value="request_reset">
+                    <div class="mb-3">
+                        <label for="recovery_email" class="form-label">Account email</label>
+                        <input class="form-control" type="email" id="recovery_email"
+                            name="recovery_email" value="<?= e(
+                                $recoveryEmail,
+                            ) ?>" autocomplete="email" required>
+                    </div>
+                    <button class="btn btn-primary w-100" type="submit">Email reset link</button>
+                </form>
                 <?php endif; ?>
             </div>
         </div>
     </div>
 </div>
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . "/includes/footer.php"; ?>
