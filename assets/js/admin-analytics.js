@@ -638,7 +638,7 @@ function initWeatherTrendChart(rows) {
 
 /** Sidebar mobile toggle */
 function initSidebar() {
-  const sidebar  = document.querySelector('.adash-sidebar');
+  const sidebar  = document.querySelector('.dashboard-sidebar');
   const overlay  = document.querySelector('.adash-overlay');
   const toggleBtn = document.querySelector('.adash-sidebar-toggle');
   if (!sidebar) return;

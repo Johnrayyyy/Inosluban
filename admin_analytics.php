@@ -323,47 +323,16 @@ require __DIR__ . "/includes/header.php";
   <!-- ======================================================
        SIDEBAR
        ====================================================== -->
-  <aside class="adash-sidebar" id="adashSidebar" aria-label="Admin navigation">
-    <a class="adash-brand" href="admin_analytics.php">
-      <img src="assets/images/logo.png" alt="Barangay Inosluban logo" width="44" height="44">
-      <div class="adash-brand-text">
+  <aside class="dashboard-sidebar" id="adashSidebar" aria-label="Admin navigation">
+    <a class="dashboard-brand" href="admin_analytics.php">
+      <img src="assets/images/logo.png" alt="Barangay Inosluban logo">
+      <span>
         <strong>BARANGAY INOSLUBAN</strong>
         <small>LIPA CITY, BATANGAS</small>
-        <small>A United Community for a Progressive Tomorrow</small>
-      </div>
+        <small>Staff Portal</small>
+      </span>
     </a>
-
-    <nav class="adash-nav" aria-label="Main navigation">
-      <a class="adash-nav-item is-active" href="admin_analytics.php">
-        <i class="bi bi-house-fill"></i> Dashboard
-      </a>
-      <a class="adash-nav-item" href="resident_search.php">
-        <i class="bi bi-people-fill"></i> Residents
-      </a>
-      <a class="adash-nav-item" href="staff_requests.php?type=documents">
-        <i class="bi bi-file-earmark-text-fill"></i> Requests
-      </a>
-      <a class="adash-nav-item" href="staff_requests.php?type=blotter">
-        <i class="bi bi-shield-fill"></i> Blotter
-      </a>
-      <a class="adash-nav-item" href="staff_requests.php?type=appointments">
-        <i class="bi bi-calendar-check-fill"></i> Appointments
-      </a>
-      <a class="adash-nav-item" href="admin_announcements.php">
-        <i class="bi bi-megaphone-fill"></i> Announcements
-      </a>
-      <a class="adash-nav-item" href="admin_audit.php">
-        <i class="bi bi-bar-chart-fill"></i> Reports
-      </a>
-      <a class="adash-nav-item" href="admin_staff.php">
-        <i class="bi bi-gear-fill"></i> Settings
-      </a>
-    </nav>
-
-    <div class="adash-sidebar-footer">
-      <i class="bi bi-shield-check"></i>
-      <span>A safe and connected community starts here.</span>
-    </div>
+    <?php require __DIR__ . "/includes/staff_nav.php"; ?>
   </aside>
   <!-- Overlay (mobile) -->
   <div class="adash-overlay" id="adashOverlay" role="presentation"></div>
