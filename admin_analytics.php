@@ -368,6 +368,10 @@ $maxBlotterCount = max(
 $snapshot = latest_weather_snapshot();
 $latestWeather = $snapshot["weather"] ?? null;
 $pageTitle = "Admin analytics dashboard";
+$additionalScripts = [
+    "https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js",
+    "assets/js/admin-analytics.js",
+];
 require __DIR__ . "/includes/header.php";
 ?>
 <main class="dashboard-page staff-page analytics-dashboard" <?= $refreshWeatherOnLogin
@@ -489,6 +493,75 @@ require __DIR__ . "/includes/header.php";
  ) ?></div>
                 </article>
             </section>
+
+            <section class="analytics-visual-grid" aria-label="Visual analytics">
+                <article class="analytics-visual-card analytics-visual-card-wide">
+                    <div class="analytics-visual-heading">
+                        <div>
+                            <span class="analytics-visual-kicker">SERVICE ACTIVITY</span>
+                            <h2>Monthly trends</h2>
+                            <p>Requests, appointments, and incidents over the last 12 months</p>
+                        </div>
+                        <span class="analytics-visual-menu" aria-hidden="true">•••</span>
+                    </div>
+                    <div class="analytics-canvas-wrap analytics-canvas-wrap-large">
+                        <canvas id="analyticsMonthlyChart"
+                            aria-label="Monthly service activity trend" role="img"></canvas>
+                    </div>
+                </article>
+
+                <article class="analytics-visual-card">
+                    <div class="analytics-visual-heading">
+                        <div>
+                            <span class="analytics-visual-kicker">POPULATION</span>
+                            <h2>Residents by status</h2>
+                            <p><?= number_format($overview["residents"]) ?> registered residents</p>
+                        </div>
+                    </div>
+                    <div class="analytics-canvas-wrap analytics-canvas-wrap-doughnut">
+                        <canvas id="analyticsResidentChart"
+                            aria-label="Residents by residency status" role="img"></canvas>
+                    </div>
+                </article>
+
+                <article class="analytics-visual-card">
+                    <div class="analytics-visual-heading">
+                        <div>
+                            <span class="analytics-visual-kicker">WORKLOAD</span>
+                            <h2>Request status</h2>
+                            <p>Current document request distribution</p>
+                        </div>
+                    </div>
+                    <div class="analytics-canvas-wrap analytics-canvas-wrap-doughnut">
+                        <canvas id="analyticsRequestChart"
+                            aria-label="Document requests by status" role="img"></canvas>
+                    </div>
+                </article>
+
+                <article class="analytics-visual-card">
+                    <div class="analytics-visual-heading">
+                        <div>
+                            <span class="analytics-visual-kicker">COMMUNICATIONS</span>
+                            <h2>Email delivery</h2>
+                            <p>Notification delivery status</p>
+                        </div>
+                    </div>
+                    <div class="analytics-canvas-wrap analytics-canvas-wrap-doughnut">
+                        <canvas id="analyticsNotificationChart"
+                            aria-label="Email notification delivery status" role="img"></canvas>
+                    </div>
+                </article>
+            </section>
+
+            <script type="application/json" id="adminAnalyticsData"><?= json_encode(
+                [
+                    "monthly_activity" => $analytics["monthly_activity"],
+                    "resident_statuses" => $analytics["resident_statuses"],
+                    "document_statuses" => $analytics["document_statuses"],
+                    "notification_status" => $analytics["notification_status"],
+                ],
+                JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
+            ) ?></script>
 
             <section class="analytics-panel analytics-ai-panel">
                 <div class="analytics-panel-heading">
