@@ -264,14 +264,11 @@ require __DIR__ . "/includes/header.php";
     </aside>
     <section class="dashboard-content request-content">
         <header class="dashboard-topbar request-topbar">
-            <div class="dashboard-search"><i class="bi bi-search"></i><input type="search"
-                    placeholder="Search services, announcements, or information..."
-                    aria-label="Search portal"></div>
+            <?php require __DIR__ . "/includes/portal_topbar_brand.php"; ?>
             <div class="dashboard-user"><button class="theme-toggle" type="button" data-theme-toggle
-                    aria-label="Switch to dark mode"><i class="bi bi-moon-stars"></i></button><span
-                    class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e(
-            $_SESSION["user"]["full_name"],
-        ) ?></strong><small>Resident Account</small></span></div>
+                    aria-label="Switch to dark mode"><i class="bi bi-moon-stars"></i></button>
+                <?php require __DIR__ . "/includes/resident_account_menu.php"; ?>
+            </div>
         </header>
         <div class="request-main appointment-main">
             <div class="request-breadcrumb">Resident Services / Appointment</div>
@@ -305,19 +302,19 @@ require __DIR__ . "/includes/header.php";
                             class="bi bi-calendar2-check"></i></span><span><small>Total
                             Appointments</small><strong><?= $appointmentCounts[
                     "total"
-                ] ?></strong></span><i class="bi bi-arrow-right"></i></article>
+                ] ?></strong></span></article>
                 <article><span class="reference-stat-icon"><i
                             class="bi bi-clock-history"></i></span><span><small>Upcoming</small><strong><?= $appointmentCounts[
                     "upcoming"
-                ] ?></strong></span><i class="bi bi-arrow-right"></i></article>
+                ] ?></strong></span></article>
                 <article><span class="reference-stat-icon"><i
                             class="bi bi-check2-circle"></i></span><span><small>Completed</small><strong><?= $appointmentCounts[
                     "completed"
-                ] ?></strong></span><i class="bi bi-arrow-right"></i></article>
+                ] ?></strong></span></article>
                 <article><span class="reference-stat-icon"><i
                             class="bi bi-x-lg"></i></span><span><small>Cancelled</small><strong><?= $appointmentCounts[
                     "cancelled"
-                ] ?></strong></span><i class="bi bi-arrow-right"></i></article>
+                ] ?></strong></span></article>
             </div>
             <div class="appointment-dashboard-grid">
                 <div class="appointment-primary-column">
@@ -696,8 +693,7 @@ if (
                         <h3><i class="bi bi-info-circle"></i> Before you book</h3>
                         <p>Choose the official who handles your concern, select a preferred time,
                             and include the document or service you need.</p><a
-                            href="#book-appointment">Start a request <i
-                                class="bi bi-arrow-right"></i></a>
+                            href="#book-appointment">Start a request</a>
                     </section>
                 </aside>
             </div>

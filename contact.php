@@ -7,7 +7,7 @@ require_resident();
 $officialGroups = [
     [
         "title" => "Barangay Officials",
-        "icon" => "bi-person-badge",
+        "icon" => "bi-bank",
         "tagline" => "Local governance officials of Barangay Inosluban.",
         "leader_role" => "Punong Barangay",
         "leader_name" => "Hon. Miguel L. Olgado",
@@ -23,7 +23,7 @@ $officialGroups = [
     ],
     [
         "title" => "Sangguniang Kabataan",
-        "icon" => "bi-person-hearts",
+        "icon" => "bi-people-fill",
         "tagline" => "Youth leaders for a progressive Barangay.",
         "leader_role" => "SK Chairperson",
         "leader_name" => "Hon. Ashlie Nicole Gonzales",
@@ -62,10 +62,11 @@ require __DIR__ . "/includes/header.php";
     </aside>
     <section class="dashboard-content">
         <header class="dashboard-topbar">
-            <div class="dashboard-user"><span class="user-avatar"><i
-                        class="bi bi-person-fill"></i></span><span><strong><?= e(
-                $_SESSION["user"]["full_name"],
-            ) ?></strong><small>Resident</small></span></div>
+            <div class="dashboard-user contact-header-user">
+                <?php require __DIR__ . "/includes/resident_account_menu.php"; ?>
+            </div>
+            <a class="contact-header-brand" href="dashboard.php"><i class="bi bi-house-fill"></i>
+                <span>Barangay Inosluban</span></a>
         </header>
         <div class="dashboard-main resident-contact-main">
             <div class="resident-contact-heading">
@@ -81,7 +82,6 @@ require __DIR__ . "/includes/header.php";
                     <span class="resident-contact-detail"><small>OFFICIAL FACEBOOK
                             PAGE</small><strong>Brgy. Inosluban | Lipa City</strong><em>Visit our
                             Facebook page for updates and messages.</em></span>
-                    <i class="bi bi-arrow-up-right resident-contact-arrow"></i>
                 </a>
                 <a class="resident-contact-card" href="mailto:inosluban2014@gmail.com">
                     <span class="resident-contact-icon resident-contact-email"><i
@@ -89,7 +89,6 @@ require __DIR__ . "/includes/header.php";
                     <span
                         class="resident-contact-detail"><small>EMAIL</small><strong>inosluban2014@gmail.com</strong><em>Send
                             your inquiry directly to the barangay office.</em></span>
-                    <i class="bi bi-arrow-up-right resident-contact-arrow"></i>
                 </a>
             </section>
             <section class="resident-officials-section" aria-labelledby="resident-officials-title">

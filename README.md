@@ -143,6 +143,72 @@ can re-enroll a staff member who cannot pass the face check.
 The server-side MediaPipe landmark model is bundled under protected storage and
 its SHA-256 checksum is verified before use.
 
+## Run locally with Docker and Tailscale
+
+This setup runs PHP/Apache and PostgreSQL in Docker and publishes the web
+application only through Tailscale. PostgreSQL is not published to the host,
+and the application has no direct `ports` mapping.
+
+### Prerequisites
+
+- Docker Desktop with Linux containers enabled
+- A Tailscale account and an auth key with permission to add a device
+- A Tailscale client on the computer or phone that will open the site
+
+### Setup
+
+1. Copy `.env.example` to `.env`:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+2. Edit `.env`. Set strong PostgreSQL credentials, the Tailscale auth key, and
+   the three face-authentication secrets. Set `APP_BASE_URL` to the HTTPS
+   hostname shown by Tailscale after the first startup.
+
+3. Start the stack from the project directory:
+
+   ```powershell
+   docker compose up -d --build
+   ```
+
+4. Find the Tailscale hostname:
+
+   ```powershell
+   docker compose exec tailscale tailscale status
+   ```
+
+   Open the HTTPS machine name shown there from another device on the same
+   tailnet. The `tailscale serve` command forwards that HTTPS address to the
+   PHP container on port 80.
+
+5. View startup logs or stop the stack when needed:
+
+   ```powershell
+   docker compose logs -f web
+   docker compose down
+   ```
+
+The database data is stored in the `pgdata` Docker volume and Tailscale's
+device identity is stored in `tailscale-state`. Do not delete either volume
+unless you intentionally want to reset the local installation. The schema is
+loaded automatically only when PostgreSQL initializes an empty data volume.
+
+### Generate face-authentication secrets
+
+From PowerShell:
+
+```powershell
+C:\xampp\php\php.exe -r "echo base64_encode(random_bytes(32)), PHP_EOL;"
+C:\xampp\php\php.exe -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+C:\xampp\php\php.exe -r "echo bin2hex(random_bytes(32)), PHP_EOL;"
+```
+
+Put the three outputs in `.env` as `FACE_ENCRYPTION_KEY`,
+`FACE_ENROLLMENT_SETUP_TOKEN`, and `FACE_ADMIN_RECOVERY_TOKEN`, respectively.
+Never commit `.env` or share these values.
+
 ## Deploy with Docker / Render
 
 The [Dockerfile](./Dockerfile) builds the PHP 8.3 Apache app, installs Composer

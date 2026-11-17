@@ -170,12 +170,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $errors[] = $exception->getMessage();
     }
 }
+$weatherPage = max(
+    1,
+    (int) filter_var($_GET["weather_page"] ?? 1, FILTER_VALIDATE_INT),
+);
+$weatherPageSize = 3;
+db()->exec(
+    "UPDATE announcement
+     SET status = 'Archived', weather_review_status = 'Dismissed'
+     WHERE weather_forecast_date < CURRENT_DATE
+       AND weather_review_status = 'Pending'
+       AND status = 'Draft'",
+);
+$pendingWeatherTotal = (int) db()
+    ->query(
+        "SELECT COUNT(*)
+         FROM announcement
+         WHERE weather_forecast_date >= CURRENT_DATE
+           AND weather_forecast_date < CURRENT_DATE + INTERVAL '3 days'
+           AND weather_review_status = 'Pending'
+           AND status = 'Draft'",
+    )
+    ->fetchColumn();
+$weatherPageCount = max(
+    1,
+    (int) ceil($pendingWeatherTotal / $weatherPageSize),
+);
+$weatherPage = min($weatherPage, $weatherPageCount);
+$weatherOffset = ($weatherPage - 1) * $weatherPageSize;
 $pendingWeather = db()
     ->query(
         "SELECT announcement_id, title, message, weather_forecast_date, weather_forecast_details, created_at
      FROM announcement
-     WHERE weather_forecast_date IS NOT NULL AND weather_review_status = 'Pending' AND status = 'Draft'
-     ORDER BY weather_forecast_date",
+     WHERE weather_forecast_date >= CURRENT_DATE
+       AND weather_forecast_date < CURRENT_DATE + INTERVAL '3 days'
+       AND weather_review_status = 'Pending'
+       AND status = 'Draft'
+     ORDER BY weather_forecast_date
+     LIMIT {$weatherPageSize} OFFSET {$weatherOffset}",
     )
     ->fetchAll();
 if ($emailWarning !== "") {
@@ -183,7 +215,10 @@ if ($emailWarning !== "") {
 }
 $announcements = db()
     ->query(
-        "SELECT announcement_id, title, status, publication_date, weather_review_status, weather_forecast_date FROM announcement ORDER BY COALESCE(publication_date, created_at) DESC LIMIT 30",
+        "SELECT announcement_id, title, message, status, publication_date, weather_review_status, weather_forecast_date
+         FROM announcement
+         ORDER BY COALESCE(publication_date, created_at) DESC
+         LIMIT 30",
     )
     ->fetchAll();
 $pageTitle = "Manage announcements";
@@ -196,6 +231,7 @@ require __DIR__ . "/includes/header.php";
                     Portal</small></span></a><?php require __DIR__ .
     "/includes/staff_nav.php"; ?></aside>
     <section class="dashboard-content">
+        <?php require __DIR__ . "/includes/admin_topbar.php"; ?>
         <div class="staff-main">
             <div class="staff-hero compact">
                 <div>
@@ -273,31 +309,71 @@ foreach (
 if (
     $pendingWeather === []
 ): ?><p class="text-muted mb-0">No weather forecast announcements need review.</p><?php endif;
-?>
+if ($weatherPageCount > 1): ?>
+                        <nav class="mt-3" aria-label="Weather forecast pages">
+                            <ul class="pagination pagination-sm mb-0">
+                                <?php for ($page = 1; $page <= $weatherPageCount; $page++): ?>
+                                <li class="page-item <?= $page === $weatherPage
+                                    ? "active"
+                                    : "" ?>"><a class="page-link" href="admin_announcements.php?weather_page=<?= $page ?>"><?= $page ?></a></li>
+                                <?php endfor; ?>
+                            </ul>
+                        </nav>
+                        <?php endif; ?>
                     </section>
                     <section class="staff-panel p-4">
-                        <h2 class="h5">Recent announcements</h2><?php foreach (
-    $announcements
-    as $announcement
-): ?><div class="border-bottom py-2"><strong><?= e(
-    $announcement["title"],
-) ?></strong><small class="d-block text-muted"><?php if (
-    $announcement["weather_review_status"] === "Pending"
-): ?>Pending weather approval<?php elseif (
-    $announcement["weather_review_status"] === "Approved"
-): ?>Weather forecast · approved<?php elseif (
-    $announcement["weather_review_status"] === "Dismissed"
-): ?>Weather forecast · dismissed<?php else: ?><?= e(
-        $announcement["status"],
-    ) ?><?php endif; ?> · <?= e(
-     $announcement["publication_date"]
-         ? (new DateTime($announcement["publication_date"]))->format("M j, Y")
-         : "Not published",
- ) ?></small></div><?php endforeach; ?>
+                        <button class="admin-recent-announcements-button" type="button"
+                            data-bs-toggle="modal" data-bs-target="#recentAnnouncementsModal">
+                            <span><i class="bi bi-megaphone"></i><strong>Recent
+                                    Announcements</strong><small>View the latest announcements and
+                                    their full contents.</small></span>
+                        </button>
                     </section>
                 </div>
             </div>
         </div>
     </section>
 </main>
+<div class="modal fade" id="recentAnnouncementsModal" tabindex="-1"
+    aria-labelledby="recentAnnouncementsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="recentAnnouncementsModalLabel">Recent Announcements</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <?php if ($announcements === []): ?>
+                <p class="text-muted mb-0">No announcements available.</p>
+                <?php else: ?>
+                <div class="admin-recent-announcements-modal-list">
+                    <?php foreach ($announcements as $announcement): ?>
+                    <?php
+                    $announcementStatus = $announcement["weather_review_status"] ===
+                    "Pending"
+                        ? "Pending weather approval"
+                        : ($announcement["weather_review_status"] === "Approved"
+                            ? "Weather forecast · approved"
+                            : ($announcement["weather_review_status"] === "Dismissed"
+                                ? "Weather forecast · dismissed"
+                                : (string) $announcement["status"]));
+                    $announcementDate = $announcement["publication_date"]
+                        ? (new DateTime($announcement["publication_date"]))->format("M j, Y")
+                        : "Not published";
+                    ?>
+                    <article class="admin-recent-announcement">
+                        <h6><?= e($announcement["title"]) ?></h6>
+                        <small><?= e(
+                            $announcementStatus . " · " . $announcementDate,
+                        ) ?></small>
+                        <p><?= nl2br(e((string) $announcement["message"])) ?></p>
+                    </article>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
 <?php require __DIR__ . "/includes/footer.php"; ?>

@@ -29,6 +29,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
+try {
+    refresh_weather_snapshot_if_due();
+    archive_daily_weather_history();
+} catch (Throwable $exception) {
+    error_log("Weather dashboard refresh error: " . $exception->getMessage());
+    $errors[] =
+        "Weather data could not be refreshed right now. Showing the latest saved data.";
+}
+
 $snapshot = latest_weather_snapshot();
 $weather = $snapshot["weather"] ?? null;
 $current = is_array($weather) ? $weather["current"] ?? [] : [];
@@ -94,6 +103,7 @@ require __DIR__ . "/includes/header.php";
         <?php require __DIR__ . "/includes/staff_nav.php"; ?>
     </aside>
     <section class="dashboard-content">
+        <?php require __DIR__ . "/includes/admin_topbar.php"; ?>
         <div class="staff-main weather-main">
             <header class="weather-page-heading">
                 <div>

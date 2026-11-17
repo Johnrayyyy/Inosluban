@@ -69,7 +69,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "GET") === "POST") {
             strlen($requiredToken) < 32 ||
             ($initialBootstrap && strlen(FACE_ADMIN_RECOVERY_TOKEN) < 32) ||
             !is_string($request[$tokenField] ?? null) ||
-            !hash_equals($requiredToken, $request[$tokenField])
+            !hash_equals($requiredToken, trim($request[$tokenField]))
         ) {
             face_auth_json_response(
                 [

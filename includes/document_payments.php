@@ -23,7 +23,7 @@ function ensure_document_payment_schema(): void
          SET payment_status = 'Paid',
              payment_amount = 20.00,
              paid_at = COALESCE(paid_at, date_completed, request_date)
-         WHERE status IN ('Completed', 'Released')
+         WHERE status = 'Released'
            AND payment_status <> 'Paid'",
     );
 }

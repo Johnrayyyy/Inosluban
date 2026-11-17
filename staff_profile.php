@@ -212,6 +212,7 @@ require __DIR__ . "/includes/header.php";
         <?php require __DIR__ . "/includes/staff_nav.php"; ?>
     </aside>
     <section class="dashboard-content">
+        <?php require __DIR__ . "/includes/staff_topbar.php"; ?>
         <div class="staff-main staff-profile-main">
             <header class="staff-profile-heading">
                 <p class="eyebrow">ACCOUNT SETTINGS</p>

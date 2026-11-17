@@ -7,13 +7,20 @@ function admin_analytics_data(): array
     $overview = $pdo
         ->query(
             "SELECT
-            (SELECT COUNT(*) FROM resident) AS residents,
+            (SELECT COUNT(*)
+             FROM resident r
+             JOIN user_account ua ON ua.username = r.username
+             WHERE ua.account_status IN ('active', 'pending')) AS residents,
             (SELECT COUNT(*) FROM household_record) AS households,
             (SELECT COUNT(*) FROM document_request) AS document_requests,
             (SELECT COUNT(*) FROM document_request WHERE status = 'Pending') AS pending_documents,
             (SELECT COUNT(*) FROM appointment WHERE schedule >= CURRENT_TIMESTAMP AND status IN ('Pending', 'Approved')) AS upcoming_appointments,
             (SELECT COUNT(*) FROM blotter WHERE status IN ('Pending', 'Under Review', 'In Progress')) AS open_blotter,
-            (SELECT COUNT(*) FROM staff WHERE employment_status = 'Active') AS active_staff,
+            (SELECT COUNT(*)
+             FROM staff s
+             JOIN user_account ua ON ua.user_id = s.user_id
+             WHERE s.employment_status = 'Active'
+               AND ua.account_status IN ('active', 'pending')) AS active_staff,
             (SELECT COUNT(*) FROM announcement WHERE status = 'Published') AS published_announcements,
             (SELECT COUNT(*) FROM disaster_preparedness WHERE expires_at IS NULL OR expires_at >= CURRENT_TIMESTAMP) AS active_disaster_alerts,
             (SELECT COUNT(*) FROM notification_log WHERE delivery_status = 'Failed') AS failed_notifications",
@@ -35,7 +42,10 @@ function admin_analytics_data(): array
         SELECT 'residents' AS metric,
                COUNT(*) FILTER (WHERE r.created_at >= p.current_start AND r.created_at < p.current_end) AS current_count,
                COUNT(*) FILTER (WHERE r.created_at >= p.previous_start AND r.created_at < p.previous_end) AS previous_count
-        FROM resident r CROSS JOIN periods p
+        FROM resident r
+        JOIN user_account ua ON ua.username = r.username
+        CROSS JOIN periods p
+        WHERE ua.account_status IN ('active', 'pending')
         UNION ALL
         SELECT 'households',
                COUNT(*) FILTER (WHERE h.created_at >= p.current_start AND h.created_at < p.current_end),
@@ -60,7 +70,10 @@ function admin_analytics_data(): array
         SELECT 'staff',
                COUNT(*) FILTER (WHERE s.created_at >= p.current_start AND s.created_at < p.current_end),
                COUNT(*) FILTER (WHERE s.created_at >= p.previous_start AND s.created_at < p.previous_end)
-        FROM staff s CROSS JOIN periods p
+        FROM staff s
+        JOIN user_account ua ON ua.user_id = s.user_id
+        CROSS JOIN periods p
+        WHERE ua.account_status IN ('active', 'pending')
         UNION ALL
         SELECT 'alerts',
                COUNT(*) FILTER (WHERE d.created_at >= p.current_start AND d.created_at < p.current_end),

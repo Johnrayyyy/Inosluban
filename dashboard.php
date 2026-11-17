@@ -54,9 +54,7 @@ require __DIR__ . "/includes/header.php";
     </aside>
     <section class="dashboard-content">
         <header class="dashboard-topbar">
-            <div class="dashboard-search"><i class="bi bi-search"></i><input type="search"
-                    placeholder="Search services, announcements, or information..."
-                    aria-label="Search portal"></div>
+            <?php require __DIR__ . "/includes/portal_topbar_brand.php"; ?>
             <div class="dashboard-user">
                 <details class="notification-menu">
                     <summary class="notification-trigger" aria-label="View notifications">
@@ -96,9 +94,7 @@ require __DIR__ . "/includes/header.php";
                         <?php endif; ?>
                     </div>
                 </details>
-                <span class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e(
-                    $_SESSION["user"]["full_name"],
-                ) ?></strong><small>Resident</small></span><i class="bi bi-chevron-down"></i>
+                <?php require __DIR__ . "/includes/resident_account_menu.php"; ?>
             </div>
         </header>
         <div class="dashboard-main">
@@ -121,32 +117,30 @@ require __DIR__ . "/includes/header.php";
                         class="bi bi-file-earmark-text"></i>
                     <h3>Request Document</h3>
                     <p>Apply for barangay clearance, certificates, and other documents.</p><span>Go
-                        to Request <i class="bi bi-arrow-right"></i></span>
+                        to Request</span>
                 </a>
                 <a class="dashboard-service-card" href="blotter.php"><i
                         class="bi bi-shield-check"></i>
                     <h3>Blotter</h3>
-                    <p>Report incidents, concerns, or request assistance.</p><span>Go to Blotter <i
-                            class="bi bi-arrow-right"></i></span>
+                    <p>Report incidents, concerns, or request assistance.</p><span>Go to Blotter</span>
                 </a>
                 <a class="dashboard-service-card" href="appointment.php"><i
                         class="bi bi-calendar3"></i>
                     <h3>Appointment</h3>
                     <p>Book an appointment with barangay officials or services.</p><span>Go to
-                        Appointment <i class="bi bi-arrow-right"></i></span>
+                        Appointment</span>
                 </a>
                 <a class="dashboard-service-card" href="announcement.php"><i
                         class="bi bi-megaphone"></i>
                     <h3>Announcements</h3>
-                    <p>View the latest updates, notices, and events.</p><span>Go to Announcements <i
-                            class="bi bi-arrow-right"></i></span>
+                    <p>View the latest updates, notices, and events.</p><span>Go to Announcements</span>
                 </a>
             </div>
             <div class="dashboard-lower-grid">
                 <section class="dashboard-panel announcements-panel" id="announcements">
                     <div class="dashboard-panel-heading">
                         <h2><i class="bi bi-megaphone"></i> Latest Announcements</h2><a
-                            href="announcement.php">View All <i class="bi bi-arrow-right"></i></a>
+                            href="announcement.php">View All</a>
                     </div><?php
                 foreach (
                     $latestAnnouncements
@@ -157,7 +151,7 @@ require __DIR__ . "/includes/header.php";
     $announcement["title"],
 ) ?></strong><small><?= e(
     format_app_datetime($announcement["publication_date"], "M j, Y"),
-) ?></small></span><i class="bi bi-chevron-right"></i></a><?php endforeach;
+) ?></small></span></a><?php endforeach;
                 if (
                     $latestAnnouncements === []
                 ): ?><p class="announcement-dashboard-empty">No published announcements at this

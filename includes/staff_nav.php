@@ -41,6 +41,14 @@ if (!$isBhw) {
 ): ?><b class="staff-nav-badge"><?= $staffCounts[
     "document_request.php"
 ] ?></b><?php endif; ?></a>
+<a class="<?= $staffModule === "staff_pickup_scanner.php"
+        ? "active"
+        : "" ?>" href="staff_pickup_scanner.php"><i
+        class="bi bi-qr-code-scan"></i>Scan Pickup QR</a>
+    <a class="<?= $staffModule === "staff_national_id_review.php"
+           ? "active"
+           : "" ?>" href="staff_national_id_review.php"><i
+           class="bi bi-person-vcard"></i>National ID Review</a>
     <a class="<?= ($_GET["type"] ?? "") === "blotter"
             ? "active"
             : "" ?>" href="staff_requests.php?type=blotter"><i class="bi bi-shield-check"></i>Blotter<?php if (

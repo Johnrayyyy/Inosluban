@@ -133,3 +133,52 @@ define(
     "FACE_ADMIN_RECOVERY_TOKEN",
     getenv("FACE_ADMIN_RECOVERY_TOKEN") ?: "",
 );
+
+define(
+    "NATIONAL_ID_SERVICE_URL",
+    rtrim(
+        getenv("NATIONAL_ID_SERVICE_URL") ?: "http://127.0.0.1:8000",
+        "/",
+    ),
+);
+define("NATIONAL_ID_SERVICE_TOKEN", getenv("NATIONAL_ID_SERVICE_TOKEN") ?: "");
+define(
+    "NATIONAL_ID_SERVICE_TIMEOUT",
+    max(3, min(60, (int) (getenv("NATIONAL_ID_SERVICE_TIMEOUT") ?: 30))),
+);
+define(
+    "NATIONAL_ID_MAX_IMAGE_BYTES",
+    max(
+        500_000,
+        min(10_000_000, (int) (getenv("NATIONAL_ID_MAX_IMAGE_BYTES") ?: 5_000_000)),
+    ),
+);
+define(
+    "NATIONAL_ID_MAX_PIXELS",
+    max(
+        1_000_000,
+        min(25_000_000, (int) (getenv("NATIONAL_ID_MAX_PIXELS") ?: 12_000_000)),
+    ),
+);
+define(
+    "NATIONAL_ID_RETENTION_DAYS",
+    max(0, (int) (getenv("NATIONAL_ID_RETENTION_DAYS") ?: 0)),
+);
+define(
+    "NATIONAL_ID_RETENTION_KEY",
+    getenv("NATIONAL_ID_RETENTION_KEY") ?: "",
+);
+define(
+    "NATIONAL_ID_PRIVACY_CONTACT",
+    getenv("NATIONAL_ID_PRIVACY_CONTACT") ?: "[BARANGAY CONTACT/DPO TO BE CONFIRMED]",
+);
+define(
+    "NATIONAL_ID_PRIVACY_PURPOSE",
+    getenv("NATIONAL_ID_PRIVACY_PURPOSE") ?:
+        "Barangay resident identity review",
+);
+define(
+    "NATIONAL_ID_PRIVACY_RETENTION_TEXT",
+    getenv("NATIONAL_ID_PRIVACY_RETENTION_TEXT") ?:
+        "[RETENTION PERIOD REQUIRES BARANGAY/DPO APPROVAL]",
+);

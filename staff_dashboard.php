@@ -61,20 +61,7 @@ require __DIR__ . "/includes/header.php";
         <?php require __DIR__ . "/includes/staff_nav.php"; ?>
     </aside>
     <section class="dashboard-content">
-        <header class="dashboard-topbar">
-            <div class="dashboard-search"><i class="bi bi-search"></i><input type="search"
-                    placeholder="<?= $isBhw
-            ? "Search households..."
-            : "Search requests..." ?>" aria-label="<?= $isBhw
-    ? "Search households"
-    : "Search requests" ?>"></div>
-            <div class="dashboard-user"><i class="bi bi-bell-fill"></i><span class="user-avatar"><i
-                        class="bi bi-person-fill"></i></span><span><strong><?= e(
-    $_SESSION["user"]["full_name"],
-) ?></strong><small><?= $isBhw
-    ? "BHW"
-    : e(ucfirst($_SESSION["user"]["role"])) ?></small></span></div>
-        </header>
+        <?php require __DIR__ . "/includes/staff_topbar.php"; ?>
         <div class="staff-main">
             <div class="staff-hero<?= $isBhw
                 ? " mb-4"

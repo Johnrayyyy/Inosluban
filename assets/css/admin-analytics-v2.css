@@ -187,7 +187,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
   flex-shrink: 0;
 }
 .adash-header-title h1 {
@@ -260,7 +259,8 @@
   background: var(--adash-primary);
   color: #fff;
   font-weight: 700;
-  font-size: .88rem;
+  font-size: .78rem;
+  letter-spacing: .03em;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -269,6 +269,21 @@
   transition: box-shadow .15s;
 }
 .adash-avatar:hover { box-shadow: 0 0 0 3px var(--adash-primary-light); }
+.adash-theme-toggle {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--adash-border);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--adash-text);
+  cursor: pointer;
+}
+.adash-theme-toggle:hover,
+.adash-theme-toggle:focus-visible {
+  color: var(--adash-primary);
+  border-color: var(--adash-primary);
+  outline: none;
+}
 
 /* Sidebar toggle (mobile) */
 .adash-sidebar-toggle {
@@ -294,6 +309,48 @@
   flex-direction: column;
   gap: 24px;
   overflow-x: hidden;
+}
+
+.adash-layout[data-theme="dark"] {
+  --adash-bg: #14171c;
+  --adash-surface: #1d2128;
+  --adash-text: #e5e7eb;
+  --adash-muted: #aab3c0;
+  --adash-border: #303641;
+}
+.adash-layout[data-theme="dark"] .adash-header,
+.adash-layout[data-theme="dark"] .adash-card,
+.adash-layout[data-theme="dark"] .adash-kpi-card,
+.adash-layout[data-theme="dark"] .adash-ai-result,
+.adash-layout[data-theme="dark"] .adash-date-range input,
+.adash-layout[data-theme="dark"] .adash-date-range,
+.adash-layout[data-theme="dark"] .adash-theme-toggle {
+  background: var(--adash-surface);
+  color: var(--adash-text);
+  border-color: var(--adash-border);
+}
+.adash-layout[data-theme="dark"] .adash-main,
+.adash-layout[data-theme="dark"] .adash-body {
+  background: var(--adash-bg);
+}
+.adash-layout[data-theme="dark"] .adash-card-sub,
+.adash-layout[data-theme="dark"] .adash-kpi-sub,
+.adash-layout[data-theme="dark"] .adash-kpi-note,
+.adash-layout[data-theme="dark"] .adash-ai-placeholder {
+  color: var(--adash-muted);
+}
+.adash-layout[data-theme="dark"] .dropdown-menu {
+  background: var(--adash-surface);
+  border-color: var(--adash-border);
+}
+.adash-layout[data-theme="dark"] .dropdown-item,
+.adash-layout[data-theme="dark"] .dropdown-item-text {
+  color: var(--adash-text);
+}
+.adash-layout[data-theme="dark"] .dropdown-item:hover,
+.adash-layout[data-theme="dark"] .dropdown-item:focus {
+  background: #303844;
+  color: #fff;
 }
 
 /* Page alerts */

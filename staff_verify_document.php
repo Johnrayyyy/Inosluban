@@ -19,59 +19,17 @@ $message = "";
 $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    verify_csrf_token($_POST["csrf_token"] ?? "");
-    $pdo = db();
-    $pdo->beginTransaction();
     try {
-        $lookup = $pdo->prepare(
-            "SELECT dr.request_id, dr.status
-             FROM document_pickup_token pt
-             JOIN document_request dr ON dr.request_id = pt.request_id
-             WHERE pt.token_hash = :token_hash AND dr.status = 'Completed'
-             FOR UPDATE OF pt, dr",
-        );
-        $lookup->execute(["token_hash" => $tokenHash]);
-        $request = $lookup->fetch();
-        if (!$request) {
-            $pdo->rollBack();
-            $error =
-                "This pickup code is invalid, already used, or no longer active.";
-        } else {
-            $release = $pdo->prepare(
-                "UPDATE document_request
-                 SET status = 'Released'
-                 WHERE request_id = :request_id AND status = 'Completed'",
-            );
-            $release->execute(["request_id" => $request["request_id"]]);
-            if ($release->rowCount() !== 1) {
-                $pdo->rollBack();
-                $error =
-                    "The request could not be released. Refresh and verify its current status.";
-            } else {
-                $removeToken = $pdo->prepare(
-                    "DELETE FROM document_pickup_token WHERE request_id = :request_id",
-                );
-                $removeToken->execute(["request_id" => $request["request_id"]]);
-                staff_audit(
-                    "DOCUMENT_RELEASED_BY_PICKUP_QR",
-                    "document_request",
-                    (int) $request["request_id"],
-                );
-                $pdo->commit();
-                $message =
-                    "Pickup verified. The document request is now marked Released.";
-            }
-        }
+        verify_csrf_token($_POST["csrf_token"] ?? "");
+        release_document_pickup($token);
+        $message =
+            "Pickup verified. The document request is now marked Released.";
     } catch (Throwable $exception) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
         error_log(
             "Document pickup QR verification error: " .
                 $exception->getMessage(),
         );
-        $error =
-            "Verification could not be completed. Please try again or check the request manually.";
+        $error = $exception->getMessage();
     }
 }
 
@@ -98,14 +56,7 @@ require __DIR__ . "/includes/header.php";
         <?php require __DIR__ . "/includes/staff_nav.php"; ?>
     </aside>
     <section class="dashboard-content">
-        <header class="dashboard-topbar">
-            <div class="dashboard-search"><i class="bi bi-shield-check"></i><span>Secure pickup
-                    verification</span></div>
-            <div class="dashboard-user"><span class="user-avatar"><i
-                        class="bi bi-person-fill"></i></span><span><strong><?= e(
-            $_SESSION["user"]["full_name"],
-        ) ?></strong><small>Staff</small></span></div>
-        </header>
+        <?php require __DIR__ . "/includes/staff_topbar.php"; ?>
         <div class="staff-main">
             <div class="staff-hero compact">
                 <div>

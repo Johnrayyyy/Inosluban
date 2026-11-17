@@ -214,14 +214,11 @@ require __DIR__ . "/includes/header.php";
     </aside>
     <section class="dashboard-content request-content">
         <header class="dashboard-topbar request-topbar">
-            <div class="dashboard-search"><i class="bi bi-search"></i><input type="search"
-                    placeholder="Search services, announcements, or information..."
-                    aria-label="Search portal"></div>
+            <?php require __DIR__ . "/includes/portal_topbar_brand.php"; ?>
             <div class="dashboard-user"><button class="theme-toggle" type="button" data-theme-toggle
-                    aria-label="Switch to dark mode"><i class="bi bi-moon-stars"></i></button><span
-                    class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e(
-            $_SESSION["user"]["full_name"],
-        ) ?></strong><small>Resident Account</small></span></div>
+                    aria-label="Switch to dark mode"><i class="bi bi-moon-stars"></i></button>
+                <?php require __DIR__ . "/includes/resident_account_menu.php"; ?>
+            </div>
         </header>
         <div class="request-main blotter-main">
             <div class="request-breadcrumb">Resident Services / Blotter</div>
@@ -349,7 +346,7 @@ require __DIR__ . "/includes/header.php";
     str_replace(" ", "-", $report["status"]),
 ) ?>"><?= e(
     $report["status"],
-) ?></em><i class="bi bi-chevron-right"></i></a><?php endforeach;
+) ?></em></a><?php endforeach;
  if (
      $reports === []
  ): ?><p class="empty-requests">No reports submitted yet.</p><?php endif;

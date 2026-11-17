@@ -327,6 +327,9 @@ function face_auth_json_response(array $body, int $status = 200): void
     http_response_code($status);
     header("Content-Type: application/json; charset=utf-8");
     header("Cache-Control: no-store");
+    if (ob_get_level() > 0) {
+        ob_clean();
+    }
     echo json_encode($body, JSON_THROW_ON_ERROR);
     exit();
 }

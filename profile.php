@@ -451,13 +451,10 @@ require __DIR__ . "/includes/header.php";
     </aside>
     <section class="dashboard-content profile-content">
         <header class="dashboard-topbar">
-            <div class="dashboard-search"><i class="bi bi-search"></i><input type="search"
-                    placeholder="Search services, announcements, or information..."
-                    aria-label="Search portal"></div>
-            <div class="dashboard-user"><span class="user-avatar"><i
-                        class="bi bi-person-fill"></i></span><span><strong><?= e(
-            $_SESSION["user"]["full_name"],
-        ) ?></strong><small>Resident Account</small></span></div>
+            <?php require __DIR__ . "/includes/portal_topbar_brand.php"; ?>
+            <div class="dashboard-user">
+                <?php require __DIR__ . "/includes/resident_account_menu.php"; ?>
+            </div>
         </header>
         <div class="profile-main">
             <div class="profile-heading">

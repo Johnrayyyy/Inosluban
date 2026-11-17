@@ -11,11 +11,38 @@ ensure_staff_tables();
 $staffRoles = ["General Staff", "BHW"];
 $errors = [];
 $message = "";
+$showArchived = ($_GET["show_archived"] ?? "") === "1";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     try {
         verify_csrf_token($_POST["csrf_token"] ?? "");
-        if (($_POST["action"] ?? "") === "update_staff") {
+        $action = (string) ($_POST["action"] ?? "");
+        if ($action === "remove_staff") {
+            $staffId = filter_var(
+                $_POST["staff_id"] ?? "",
+                FILTER_VALIDATE_INT,
+            );
+            if (!$staffId) {
+                throw new RuntimeException("Select a valid staff account.");
+            }
+            $remove = db()->prepare(
+                "UPDATE user_account
+                 SET account_status = 'disabled'
+                 WHERE user_id = (SELECT user_id FROM staff WHERE staff_id = :staff_id)
+                   AND role = 'staff'
+                   AND account_status <> 'disabled'",
+            );
+            $remove->execute(["staff_id" => $staffId]);
+            if ($remove->rowCount() !== 1) {
+                throw new RuntimeException(
+                    "This staff account is already disabled or no longer exists.",
+                );
+            }
+            staff_audit("STAFF_ACCOUNT_REMOVED", "staff", $staffId, [
+                "account_status" => "disabled",
+            ]);
+            $message = "Staff account removed from active access.";
+        } elseif ($action === "update_staff") {
             $staffId = filter_var(
                 $_POST["staff_id"] ?? "",
                 FILTER_VALIDATE_INT,
@@ -28,7 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 !in_array($staffRole, $staffRoles, true) ||
                 !in_array(
                     $status,
-                    ["active", "inactive", "pending", "locked"],
+                    ["active", "disabled", "pending", "locked"],
                     true,
                 )
             ) {
@@ -121,6 +148,9 @@ $staffMembers = db()
             ua.username, ua.account_status
      FROM staff s
      JOIN user_account ua ON ua.user_id = s.user_id
+     WHERE ua.account_status IN (' .
+            ($showArchived ? "'disabled', 'locked'" : "'active', 'pending'") .
+            ')
      ORDER BY s.last_name, s.first_name',
     )
     ->fetchAll();
@@ -149,6 +179,7 @@ require __DIR__ . "/includes/header.php";
         <?php require __DIR__ . "/includes/staff_nav.php"; ?>
     </aside>
     <section class="dashboard-content">
+        <?php require __DIR__ . "/includes/admin_topbar.php"; ?>
         <div class="staff-main admin-staff-main">
             <header class="admin-staff-heading">
                 <div>
@@ -241,10 +272,18 @@ require __DIR__ . "/includes/header.php";
                                 class="bi bi-person-vcard"></i></span>
                         <div>
                             <h2>Staff accounts</h2>
-                            <p>Update role, assignment, or account availability.</p>
+                            <p><?= $showArchived
+                                ? "Review disabled and locked accounts for reuse."
+                                : "Update role, assignment, or account availability." ?></p>
                         </div><strong><?= number_format(
                         count($staffMembers),
-                    ) ?></strong>
+                    ) ?></strong><a class="btn btn-outline-secondary btn-sm"
+                            href="admin_staff.php<?= $showArchived
+                                ? ""
+                                : "?show_archived=1" ?>"><i class="bi bi-archive"></i>
+                            <?= $showArchived
+                                ? "Show active accounts"
+                                : "Show disabled &amp; locked" ?></a>
                     </div>
                     <div class="admin-staff-list">
                         <?php foreach ($staffMembers as $member): ?>
@@ -305,7 +344,7 @@ require __DIR__ . "/includes/header.php";
                                         class="form-control form-control-sm" name="account_status"><?php foreach (
                                         [
                                             "active",
-                                            "inactive",
+                                            "disabled",
                                             "pending",
                                             "locked",
                                         ]
@@ -315,15 +354,22 @@ require __DIR__ . "/includes/header.php";
 ) ?>" <?= $accountStatus === $status ? "selected" : "" ?>><?= e(
     ucfirst($status),
 ) ?></option><?php endforeach; ?></select></div>
-                                <button class="btn btn-outline-primary btn-sm" type="submit"><i
-                                        class="bi bi-check2"></i> Save</button>
+                                <div class="admin-staff-record-actions">
+                                    <button class="btn btn-outline-primary btn-sm" type="submit"><i
+                                            class="bi bi-check2"></i> Save</button>
+                                    <button class="btn btn-outline-danger btn-sm" type="submit"
+                                        name="action" value="remove_staff"
+                                        onclick="return confirm('Remove this staff account from active access? The account will no longer be able to sign in.');"><i
+                                            class="bi bi-person-x"></i> Remove account</button>
+                                </div>
                             </div>
                         </form>
                         <?php endforeach; ?>
                         <?php if (
                             $staffMembers === []
-                        ): ?><p class="analytics-empty">No staff accounts yet. Create the first
-                            account using the form.</p><?php endif; ?>
+                        ): ?><p class="analytics-empty"><?= $showArchived
+                            ? "No disabled or locked staff accounts are available for reuse."
+                            : "No active or pending staff accounts yet. Create the first account using the form." ?></p><?php endif; ?>
                     </div>
                 </section>
             </div>

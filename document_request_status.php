@@ -118,14 +118,11 @@ require __DIR__ . "/includes/header.php";
     </aside>
     <section class="dashboard-content request-content">
         <header class="dashboard-topbar request-topbar">
-            <div class="dashboard-search"><i class="bi bi-search"></i><input type="search"
-                    placeholder="Search services, announcements, or information..."
-                    aria-label="Search portal"></div>
+            <?php require __DIR__ . "/includes/portal_topbar_brand.php"; ?>
             <div class="dashboard-user"><button class="theme-toggle" type="button" data-theme-toggle
-                    aria-label="Switch to dark mode"><i class="bi bi-moon-stars"></i></button><span
-                    class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e(
-            $_SESSION["user"]["full_name"],
-        ) ?></strong><small>Resident Account</small></span></div>
+                    aria-label="Switch to dark mode"><i class="bi bi-moon-stars"></i></button>
+                <?php require __DIR__ . "/includes/resident_account_menu.php"; ?>
+            </div>
         </header>
         <div class="request-main">
             <div class="request-breadcrumb">Resident Services / Request Documents</div>
@@ -254,11 +251,10 @@ endforeach; ?></div><?php if (
     STR_PAD_LEFT,
 ) ?></small><em><?= e($item["status"]) ?></em><small>Updated <?= e(
     (new DateTime($item["request_date"]))->format("M d"),
-) ?></small></span><i class="bi bi-chevron-right"></i></a><?php endforeach; ?><div
+) ?></small></span></a><?php endforeach; ?><div
                         class="request-help"><strong>Questions about your
                             request?</strong><small>Contact the barangay office and provide your
-                            tracking number.</small><a href="contact.php">Contact office <i
-                                class="bi bi-arrow-right"></i></a></div>
+                            tracking number.</small><a href="contact.php">Contact office</a></div>
                 </aside>
             </div>
         </div>

@@ -291,20 +291,14 @@ require __DIR__ . "/includes/header.php";
     </aside>
     <section class="dashboard-content">
         <header class="dashboard-topbar">
-            <div class="dashboard-search"><i class="bi bi-search"></i><input type="search"
-                    placeholder="Search services, announcements, or information..." aria-label="<?= ($_SESSION[
-            "user"
-        ]["role"] ??
-            "") ===
-        "resident"
-            ? "Search portal"
-            : "Search analytics" ?>"></div>
-            <div class="dashboard-user"><span class="user-avatar"><i
-                        class="bi bi-person-fill"></i></span><span><strong><?= e(
-    $_SESSION["user"]["full_name"],
-) ?></strong><small><?= $isAdmin
-    ? "Administrator"
-    : "Resident" ?></small></span></div>
+            <?php require __DIR__ . "/includes/portal_topbar_brand.php"; ?>
+            <div class="dashboard-user">
+                <?php if ($isAdmin): ?>
+                <?php require __DIR__ . "/includes/admin_account_menu.php"; ?>
+                <?php else: ?>
+                <?php require __DIR__ . "/includes/resident_account_menu.php"; ?>
+                <?php endif; ?>
+            </div>
         </header>
         <div class="ai-assistant-main">
             <div class="ai-assistant-heading">

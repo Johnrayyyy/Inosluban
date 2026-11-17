@@ -1,8 +1,11 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . "/document_payments.php";
+
 function ensure_document_pickup_schema(): void
 {
+    ensure_document_payment_schema();
     $pdo = db();
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS document_pickup_token (
@@ -116,4 +119,67 @@ function create_document_pickup_token(int $requestId): array
         "url" => $verificationUrl,
         "png" => $png,
     ];
+}
+
+function release_document_pickup(string $token): int
+{
+    $token = strtolower(trim(rawurldecode($token)));
+    if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+        throw new RuntimeException("Pickup code is invalid.");
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $lookup = $pdo->prepare(
+            "SELECT dr.request_id
+             FROM document_pickup_token pt
+             JOIN document_request dr ON dr.request_id = pt.request_id
+             WHERE pt.token_hash = :token_hash AND dr.status = 'Completed'
+             FOR UPDATE OF pt, dr",
+        );
+        $lookup->execute(["token_hash" => hash("sha256", $token)]);
+        $requestId = $lookup->fetchColumn();
+        if ($requestId === false) {
+            throw new RuntimeException(
+                "This pickup code is invalid, already used, or no longer active.",
+            );
+        }
+
+        $release = $pdo->prepare(
+            "UPDATE document_request
+             SET status = 'Released',
+                 payment_status = 'Paid',
+                 payment_amount = :payment_amount,
+                 paid_at = COALESCE(paid_at, CURRENT_TIMESTAMP)
+             WHERE request_id = :request_id AND status = 'Completed'",
+        );
+        $release->execute([
+            "request_id" => $requestId,
+            "payment_amount" => DOCUMENT_REQUEST_FEE_PESOS,
+        ]);
+        if ($release->rowCount() !== 1) {
+            throw new RuntimeException(
+                "The document could not be released from its current status.",
+            );
+        }
+
+        $removeToken = $pdo->prepare(
+            "DELETE FROM document_pickup_token WHERE request_id = :request_id",
+        );
+        $removeToken->execute(["request_id" => $requestId]);
+        staff_audit(
+            "DOCUMENT_RELEASED_BY_PICKUP_QR",
+            "document_request",
+            (int) $requestId,
+        );
+        $pdo->commit();
+
+        return (int) $requestId;
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $exception;
+    }
 }

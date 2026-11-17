@@ -96,14 +96,11 @@ require __DIR__ . "/includes/header.php";
     </aside>
     <section class="dashboard-content request-content">
         <header class="dashboard-topbar request-topbar">
-            <div class="dashboard-search"><i class="bi bi-search"></i><input type="search"
-                    placeholder="Search services, announcements, or information..."
-                    aria-label="Search portal"></div>
+            <?php require __DIR__ . "/includes/portal_topbar_brand.php"; ?>
             <div class="dashboard-user"><button class="theme-toggle" type="button" data-theme-toggle
-                    aria-label="Switch to dark mode"><i class="bi bi-moon-stars"></i></button><span
-                    class="user-avatar"><i class="bi bi-person-fill"></i></span><span><strong><?= e(
-            $_SESSION["user"]["full_name"],
-        ) ?></strong><small>Resident Account</small></span></div>
+                    aria-label="Switch to dark mode"><i class="bi bi-moon-stars"></i></button>
+                <?php require __DIR__ . "/includes/resident_account_menu.php"; ?>
+            </div>
         </header>
         <div class="request-main">
             <div class="request-breadcrumb">Resident Services / Blotter / Track report</div>
@@ -198,7 +195,7 @@ endforeach; ?></div><?php if (
     STR_PAD_LEFT,
 ) ?></small><em><?= e($item["status"]) ?></em><small><?= e(
     (new DateTime($item["report_date"]))->format("M d, Y"),
-) ?></small></span><i class="bi bi-chevron-right"></i></a><?php endforeach; ?>
+) ?></small></span></a><?php endforeach; ?>
                 </aside>
             </div>
         </div>

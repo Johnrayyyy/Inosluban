@@ -13,6 +13,122 @@ document.querySelectorAll("[data-password-toggle]").forEach((button) => {
   });
 });
 
+document.querySelectorAll(".dashboard-user").forEach((userMenu) => {
+  if (userMenu.querySelector("[data-profile-menu]")) {
+    return;
+  }
+
+  const avatar = userMenu.querySelector(":scope > .user-avatar");
+  const identity = [...userMenu.children].find(
+    (child) =>
+      child.matches(":scope > span:not(.user-avatar)") &&
+      child.querySelector("strong"),
+  );
+  if (!avatar || !identity) {
+    return;
+  }
+
+  const roleLabel = identity
+    .querySelector("small")
+    ?.textContent.trim()
+    .toLowerCase();
+  const role = roleLabel?.includes("resident")
+    ? "resident"
+    : roleLabel?.includes("admin")
+      ? "admin"
+      : "staff";
+  const accountUrl =
+    role === "resident"
+      ? "profile.php"
+      : role === "admin"
+        ? "admin_staff.php"
+        : "staff_profile.php";
+  const accountLabel = "Settings";
+  const fullName = identity.querySelector("strong").textContent.trim();
+  const nameParts = fullName.split(/\s+/).filter(Boolean);
+  const initials =
+    nameParts.length > 1
+      ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
+      : (nameParts[0]?.slice(0, 2) || "?");
+
+  const trigger = document.createElement("button");
+  trigger.className = "dashboard-user-trigger";
+  trigger.type = "button";
+  trigger.setAttribute("aria-expanded", "false");
+  trigger.setAttribute("aria-haspopup", "true");
+  trigger.setAttribute("aria-label", "Open account menu");
+  avatar.replaceChildren(document.createTextNode(initials.toUpperCase()));
+  trigger.append(avatar, identity);
+
+  const chevron = document.createElement("i");
+  chevron.className = "bi bi-chevron-down dashboard-user-chevron";
+  chevron.setAttribute("aria-hidden", "true");
+  trigger.append(chevron);
+
+  const menu = document.createElement("div");
+  menu.className = "dashboard-user-menu";
+  menu.dataset.profileMenu = "true";
+  menu.hidden = true;
+  menu.innerHTML = `
+    <div class="dashboard-user-menu-heading">${fullName}<small>${role || "Account"}</small></div>
+    <a href="${accountUrl}"><i class="bi bi-person-gear"></i>${accountLabel}</a>
+    <a class="dashboard-user-menu-logout" href="logout.php">
+      <i class="bi bi-box-arrow-right"></i>Log out
+    </a>
+  `;
+
+  userMenu.append(trigger, menu);
+  trigger.addEventListener("click", () => {
+    const isOpen = !menu.hidden;
+    document.querySelectorAll("[data-profile-menu]").forEach((item) => {
+      item.hidden = true;
+      item.previousElementSibling?.setAttribute("aria-expanded", "false");
+    });
+    menu.hidden = isOpen;
+    trigger.setAttribute("aria-expanded", String(!isOpen));
+  });
+  document.addEventListener("click", (event) => {
+    if (!userMenu.contains(event.target)) {
+      menu.hidden = true;
+      trigger.setAttribute("aria-expanded", "false");
+    }
+  });
+});
+
+const portalThemeRoots = document.querySelectorAll(
+  ".dashboard-page, .adash-layout",
+);
+const portalThemeToggles = document.querySelectorAll(
+  "[data-portal-theme-toggle]",
+);
+if (portalThemeRoots.length > 0 && portalThemeToggles.length > 0) {
+  const savedPortalTheme = window.localStorage.getItem("portal-theme");
+  const setPortalTheme = (theme) => {
+    portalThemeRoots.forEach((root) => {
+      root.dataset.theme = theme;
+    });
+    portalThemeToggles.forEach((toggle) => {
+      const dark = theme === "dark";
+      toggle.innerHTML = `<i class="bi ${
+        dark ? "bi-sun" : "bi-moon-stars"
+      }"></i>`;
+      toggle.setAttribute(
+        "aria-label",
+        dark ? "Switch to light mode" : "Switch to dark mode",
+      );
+    });
+  };
+  setPortalTheme(savedPortalTheme === "dark" ? "dark" : "light");
+  portalThemeToggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const nextTheme =
+        portalThemeRoots[0].dataset.theme === "dark" ? "light" : "dark";
+      setPortalTheme(nextTheme);
+      window.localStorage.setItem("portal-theme", nextTheme);
+    });
+  });
+}
+
 document
   .querySelectorAll('.dashboard-search input[aria-label="Search portal"]')
   .forEach((input) => {

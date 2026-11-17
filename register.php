@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . "/includes/bootstrap.php";
 require_once __DIR__ . "/includes/households.php";
+require_once __DIR__ . "/includes/national_id.php";
 
 if (is_logged_in()) {
     header("Location: dashboard.php");
@@ -43,6 +44,10 @@ $fields = [
     "emergency_contact_number" => "",
     "valid_id_file_path" => "",
     "profile_image_path" => "",
+    "id_verification_method" => "manual",
+    "national_id_format" => "",
+    "national_id_result" => null,
+    "national_id_confirmed" => false,
 ];
 
 if (!isset($_SESSION["registration"])) {
@@ -52,6 +57,8 @@ $draft = &$_SESSION["registration"];
 $values = array_merge($fields, $draft["values"] ?? []);
 $step = max(1, min(5, (int) ($_GET["step"] ?? ($_POST["step"] ?? 1))));
 $errors = [];
+$nationalIdMessage = "";
+$stayOnStep = false;
 
 $stepFields = [
     1 => [
@@ -176,6 +183,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $errors[] = "Please enter a valid email address.";
         }
     } elseif ($step === 4 && $action !== "back") {
+        $method = (string) ($_POST["id_verification_method"] ?? "manual");
+        $format = (string) ($_POST["national_id_format"] ?? "");
+        $values["id_verification_method"] = $method;
+        $values["national_id_format"] = $format;
         $password = (string) ($_POST["password"] ?? "");
         $confirmation = (string) ($_POST["password_confirmation"] ?? "");
         if (
@@ -191,9 +202,64 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
         if ($errors === []) {
             try {
-                $values["valid_id_file_path"] =
-                    registration_upload("valid_id", "valid-id") ??
-                    $values["valid_id_file_path"];
+                if ($method === "national_id") {
+                    if (!in_array($format, ["PhilID", "ePhilID"], true)) {
+                        throw new RuntimeException(
+                            "Select PhilID or printed ePhilID.",
+                        );
+                    }
+                    if (($_POST["national_id_consent"] ?? "") !== "accepted") {
+                        throw new RuntimeException(
+                            "National ID privacy consent is required before submission.",
+                        );
+                    }
+                    $existingResult = $values["national_id_result"];
+                    $confirmed =
+                        ($_POST["national_id_confirmed"] ?? "") === "accepted";
+                    if (
+                        $confirmed &&
+                        is_array($existingResult) &&
+                        isset($existingResult["extracted"])
+                    ) {
+                        $values["national_id_confirmed"] = true;
+                        $extracted = $existingResult["extracted"];
+                        foreach (
+                            [
+                                "first_name",
+                                "middle_name",
+                                "last_name",
+                                "birthdate",
+                                "gender",
+                            ]
+                            as $field
+                        ) {
+                            if (
+                                is_string($extracted[$field] ?? null) &&
+                                $extracted[$field] !== ""
+                            ) {
+                                $values[$field] = $extracted[$field];
+                            }
+                        }
+                    } else {
+                        $result = national_id_verify_uploads();
+                        $values["national_id_result"] = $result;
+                        $values["national_id_confirmed"] = false;
+                        $nationalIdMessage =
+                            $result["status"] === "PRE_VERIFIED"
+                                ? "The local checks passed. Confirm the extracted details before continuing."
+                                : "The submission needs authorized staff review. Confirm the extracted details before continuing.";
+                        $stayOnStep = true;
+                    }
+                } elseif ($method === "manual") {
+                    $values["national_id_result"] = null;
+                    $values["national_id_confirmed"] = false;
+                    $values["national_id_format"] = "";
+                    $values["valid_id_file_path"] =
+                        registration_upload("valid_id", "valid-id") ??
+                        $values["valid_id_file_path"];
+                } else {
+                    throw new RuntimeException("Select an ID verification method.");
+                }
                 $values["profile_image_path"] =
                     registration_upload("profile_image", "profile") ??
                     $values["profile_image_path"];
@@ -296,6 +362,54 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         "username" => $values["username"],
                         "password_hash" => $draft["password_hash"],
                     ]);
+                    if (
+                        $values["id_verification_method"] === "national_id" &&
+                        is_array($values["national_id_result"]) &&
+                        $values["national_id_confirmed"] === true
+                    ) {
+                        $nationalId = national_id_result_for_storage(
+                            $values["national_id_result"],
+                        );
+                        $verification = $pdo->prepare(
+                            "INSERT INTO national_id_verification (
+                                resident_id, service_verification_id, id_format, status,
+                                masked_pcn, qr_decoded, front_pcn_match,
+                                front_last_name_match, selfie_quality_pass, face_match_pass,
+                                face_metric, face_score, review_reasons, consented_at,
+                                consent_version, processed_at
+                             ) VALUES (
+                                :resident_id, :service_verification_id, :id_format, :status,
+                                :masked_pcn, :qr_decoded, :front_pcn_match,
+                                :front_last_name_match, :selfie_quality_pass, :face_match_pass,
+                                :face_metric, :face_score, CAST(:review_reasons AS JSONB),
+                                CURRENT_TIMESTAMP, :consent_version, CURRENT_TIMESTAMP
+                             )",
+                        );
+                        $verification->execute([
+                            "resident_id" => $residentId,
+                            "service_verification_id" =>
+                                $nationalId["service_verification_id"],
+                            "id_format" => $values["national_id_format"],
+                            "status" => $nationalId["status"],
+                            "masked_pcn" => $nationalId["masked_pcn"],
+                            "qr_decoded" => $nationalId["qr_decoded"],
+                            "front_pcn_match" =>
+                                $nationalId["front_pcn_match"],
+                            "front_last_name_match" =>
+                                $nationalId["front_last_name_match"],
+                            "selfie_quality_pass" =>
+                                $nationalId["selfie_quality_pass"],
+                            "face_match_pass" =>
+                                $nationalId["face_match_pass"],
+                            "face_metric" => $nationalId["face_metric"],
+                            "face_score" => $nationalId["face_score"],
+                            "review_reasons" => json_encode(
+                                $nationalId["review_reasons"],
+                                JSON_THROW_ON_ERROR,
+                            ),
+                            "consent_version" => "national-id-v1",
+                        ]);
+                    }
                     link_registered_resident_to_household($pdo, $residentId);
                     $pdo->commit();
                     unset($_SESSION["registration"]);
@@ -308,6 +422,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     throw $exception;
                 }
             }
+        } elseif ($stayOnStep) {
+            $step = 4;
         } elseif ($action === "next") {
             $step = min(5, $step + 1);
         } elseif ($action === "back") {
@@ -359,6 +475,9 @@ require __DIR__ . "/includes/header.php";
                     </div>
                 </div>
                 <?php require __DIR__ . "/includes/alerts.php"; ?>
+                <?php if ($nationalIdMessage !== ""): ?>
+                <div class="alert alert-info"><?= e($nationalIdMessage) ?></div>
+                <?php endif; ?>
 
                 <form method="post" action="register.php?step=<?= $step ?>"
                     enctype="multipart/form-data" novalidate>
@@ -542,9 +661,133 @@ require __DIR__ . "/includes/header.php";
                     </div>
                     <?php elseif ($step === 4): ?>
                     <div class="registration-fields">
-                        <div class="mb-2"><label for="valid_id" class="form-label">Valid
-                                ID</label><input type="file" class="form-control" id="valid_id"
-                                name="valid_id" accept=".jpg,.jpeg,.png,.pdf"></div>
+                        <div class="mb-2 registration-id-choice">
+                            <span class="form-label d-block">Identity verification method</span>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio"
+                                    id="id_method_manual" name="id_verification_method"
+                                    value="manual" <?= $values["id_verification_method"] ===
+                                    "manual"
+                                        ? "checked"
+                                        : "" ?>>
+                                <label class="form-check-label" for="id_method_manual">
+                                    Other valid ID (manual staff review)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio"
+                                    id="id_method_national" name="id_verification_method"
+                                    value="national_id" <?= $values["id_verification_method"] ===
+                                    "national_id"
+                                        ? "checked"
+                                        : "" ?>>
+                                <label class="form-check-label" for="id_method_national">
+                                    Philippine National ID (PhilID/ePhilID)
+                                </label>
+                            </div>
+                        </div>
+                        <div id="manual-id-fields" class="mb-2">
+                            <label for="valid_id" class="form-label">Valid ID</label>
+                            <input type="file" class="form-control" id="valid_id"
+                                name="valid_id" accept=".jpg,.jpeg,.png,.pdf">
+                            <div class="form-text">JPG, PNG, or PDF up to 5 MB.</div>
+                        </div>
+                        <div id="national-id-fields" class="mb-2" hidden>
+                            <label for="national_id_format" class="form-label">National ID format</label>
+                            <select class="form-control" id="national_id_format"
+                                name="national_id_format">
+                                <option value="">Select format</option>
+                                <option value="PhilID" <?= $values["national_id_format"] ===
+                                "PhilID"
+                                    ? "selected"
+                                    : "" ?>>Physical PVC PhilID</option>
+                                <option value="ePhilID" <?= $values["national_id_format"] ===
+                                "ePhilID"
+                                    ? "selected"
+                                    : "" ?>>Printed paper ePhilID</option>
+                            </select>
+                            <p class="form-text">
+                                Upload separate JPG or PNG images of the front, back QR code, and
+                                one live selfie. Images are processed privately and are not saved
+                                as public files.
+                            </p>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label" for="front_image">Front of ID</label>
+                                    <input class="form-control" type="file" id="front_image"
+                                        name="front_image" accept="image/jpeg,image/png"
+                                        capture="environment">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="back_image">Back with QR</label>
+                                    <input class="form-control" type="file" id="back_image"
+                                        name="back_image" accept="image/jpeg,image/png"
+                                        capture="environment">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="selfie_image">Live selfie</label>
+                                    <input class="form-control" type="file" id="selfie_image"
+                                        name="selfie_image" accept="image/jpeg,image/png"
+                                        capture="user">
+                                </div>
+                            </div>
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox"
+                                    id="national_id_consent" name="national_id_consent"
+                                    value="accepted">
+                                <label class="form-check-label" for="national_id_consent">
+                                    I consent to the collection and private processing of the front
+                                    and back ID images, QR-extracted details, selfie, and face
+                                    comparison result for <?= e(
+                                        NATIONAL_ID_PRIVACY_PURPOSE,
+                                    ) ?> by authorized personnel. Automated checks may be used;
+                                    uncertain cases may require manual review. Retention:
+                                    <?= e(NATIONAL_ID_PRIVACY_RETENTION_TEXT) ?>.
+                                    Contact/DPO: <?= e(NATIONAL_ID_PRIVACY_CONTACT) ?>.
+                                </label>
+                            </div>
+                            <?php if (
+                                is_array($values["national_id_result"]) &&
+                                isset($values["national_id_result"]["extracted"])
+                            ): ?>
+                            <?php $nationalIdExtracted =
+                                $values["national_id_result"]["extracted"]; ?>
+                            <div class="national-id-result mt-3">
+                                <strong>Extracted details</strong>
+                                <p class="small mb-2">Review these values. They are not an official
+                                    PSA verification result.</p>
+                                <dl class="row mb-2">
+                                    <?php foreach (
+                                        [
+                                            "first_name" => "Given name",
+                                            "middle_name" => "Middle name",
+                                            "last_name" => "Last name",
+                                            "birthdate" => "Birthdate",
+                                            "gender" => "Sex",
+                                        ]
+                                        as $key => $label
+                                    ): ?>
+                                    <dt class="col-sm-4"><?= e($label) ?></dt>
+                                    <dd class="col-sm-8"><?= e(
+                                        (string) ($nationalIdExtracted[$key] ?? "Not available"),
+                                    ) ?></dd>
+                                    <?php endforeach; ?>
+                                </dl>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox"
+                                        id="national_id_confirmed" name="national_id_confirmed"
+                                        value="accepted" <?= $values["national_id_confirmed"] ===
+                                        true
+                                            ? "checked"
+                                            : "" ?>>
+                                    <label class="form-check-label" for="national_id_confirmed">
+                                        I confirm these extracted values are correct and may be
+                                        copied to my resident profile.
+                                    </label>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
                         <div class="mb-2"><label for="profile_image" class="form-label">Profile
                                 Image</label><input type="file" class="form-control"
                                 id="profile_image" name="profile_image" accept=".jpg,.jpeg,.png">
@@ -570,9 +813,14 @@ require __DIR__ . "/includes/header.php";
                                         [
                                             "valid_id_file_path",
                                             "profile_image_path",
+                                            "id_verification_method",
+                                            "national_id_format",
+                                            "national_id_result",
+                                            "national_id_confirmed",
                                         ],
                                         true,
-                                    )
+                                    ) &&
+                                    is_scalar($value)
                                 ): ?>
                         <div><strong><?= e(
                                         ucwords(str_replace("_", " ", $name)),
@@ -613,6 +861,28 @@ require __DIR__ . "/includes/header.php";
         </div>
     </div>
 </main>
+<?php if ($step === 4): ?>
+<script>
+(() => {
+    const manual = document.getElementById("manual-id-fields");
+    const national = document.getElementById("national-id-fields");
+    const update = () => {
+        const selected = document.querySelector("input[name='id_verification_method']:checked");
+        const isNational = selected && selected.value === "national_id";
+        if (manual) {
+            manual.hidden = Boolean(isNational);
+        }
+        if (national) {
+            national.hidden = !isNational;
+        }
+    };
+    document.querySelectorAll("input[name='id_verification_method']").forEach((input) => {
+        input.addEventListener("change", update);
+    });
+    update();
+})();
+</script>
+<?php endif; ?>
 <div class="modal fade auth-modal" id="termsModal" tabindex="-1" aria-labelledby="termsModalTitle"
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">

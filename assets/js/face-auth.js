@@ -118,7 +118,16 @@ document.querySelectorAll("[data-face-auth]").forEach((panel) => {
       },
       body: JSON.stringify(body),
     });
-    const result = await response.json();
+    const responseText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (error) {
+      console.error("Face authentication returned non-JSON:", responseText);
+      throw new Error(
+        "The server returned an unexpected response. Check the PHP application logs and try again.",
+      );
+    }
     if (!response.ok || !result.ok) {
       throw new Error(result.message || "Face verification did not succeed.");
     }

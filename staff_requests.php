@@ -94,10 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $set =
             $type === "documents"
                 ? 'status = :status, assigned_staff_id = :staff_id, remarks = NULLIF(:notes, \'\'),
-            date_completed = CASE WHEN :completed_date_status = \'Completed\' THEN COALESCE(date_completed, CURRENT_TIMESTAMP) ELSE date_completed END,
-            payment_status = CASE WHEN :completed_payment_status = \'Completed\' THEN \'Paid\' ELSE payment_status END,
-            payment_amount = CASE WHEN :completed_amount_status = \'Completed\' THEN :payment_fee ELSE payment_amount END,
-            paid_at = CASE WHEN :completed_paid_at_status = \'Completed\' THEN COALESCE(paid_at, CURRENT_TIMESTAMP) ELSE paid_at END'
+            date_completed = CASE WHEN :completed_date_status = \'Completed\' THEN COALESCE(date_completed, CURRENT_TIMESTAMP) ELSE date_completed END'
                 : ($type === "blotter"
                     ? 'status = :status, assigned_staff_id = :staff_id, resolution_notes = NULLIF(:notes, \'\'), date_resolved = CASE WHEN :resolved_status IN (\'Resolved\', \'Closed\') THEN CURRENT_TIMESTAMP ELSE date_resolved END'
                     : "status = :status, assigned_staff_id = :staff_id");
@@ -114,10 +111,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
         if ($type === "documents") {
             $parameters["completed_date_status"] = $newStatus;
-            $parameters["completed_payment_status"] = $newStatus;
-            $parameters["completed_amount_status"] = $newStatus;
-            $parameters["completed_paid_at_status"] = $newStatus;
-            $parameters["payment_fee"] = DOCUMENT_REQUEST_FEE_PESOS;
         }
         if ($type === "blotter") {
             $parameters["resolved_status"] = $newStatus;
@@ -231,11 +224,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
                 $removePickupToken->execute(["request_id" => $recordId]);
             }
-            if ($newStatus === "Completed") {
-                $message =
-                    "Request completed; the ₱20.00 document fee was automatically recorded as paid." .
-                    ($message !== "" ? " " . $message : "");
-            }
         }
         staff_audit("REQUEST_STATUS_UPDATED", $config["table"], $recordId, [
             "status" => $newStatus,
@@ -339,15 +327,7 @@ require __DIR__ . "/includes/header.php";
                     Portal</small></span></a><?php require __DIR__ .
         "/includes/staff_nav.php"; ?></aside>
     <section class="dashboard-content">
-        <header class="dashboard-topbar">
-            <div class="dashboard-search"><i class="bi bi-search"></i><input type="search"
-                    placeholder="Search by resident, tracking number, or request type..."
-                    aria-label="Search requests"></div>
-            <div class="dashboard-user"><span class="user-avatar"><i
-                        class="bi bi-person-fill"></i></span><span><strong><?= e(
-            $_SESSION["user"]["full_name"],
-        ) ?></strong><small>Staff</small></span></div>
-        </header>
+            <?php require __DIR__ . "/includes/staff_topbar.php"; ?>
         <div class="staff-main">
             <div class="staff-hero compact">
                 <div>

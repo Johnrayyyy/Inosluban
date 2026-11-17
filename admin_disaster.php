@@ -206,6 +206,7 @@ require __DIR__ . "/includes/header.php";
         <?php require __DIR__ . "/includes/staff_nav.php"; ?>
     </aside>
     <section class="dashboard-content">
+        <?php require __DIR__ . "/includes/admin_topbar.php"; ?>
         <div class="staff-main analytics-main">
             <header class="analytics-heading">
                 <div>

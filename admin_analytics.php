@@ -312,7 +312,7 @@ $hideSiteFooter      = true;
 
 /* ---- Admin user display name ------------------------------ */
 $adminName    = $_SESSION["staff_name"]  ?? $_SESSION["username"] ?? "Admin";
-$adminInitial = strtoupper(substr($adminName, 0, 1));
+$adminInitial = strtoupper(substr(trim($adminName), 0, 1) ?: "A");
 
 require __DIR__ . "/includes/header.php";
 ?>
@@ -329,7 +329,7 @@ require __DIR__ . "/includes/header.php";
       <span>
         <strong>BARANGAY INOSLUBAN</strong>
         <small>LIPA CITY, BATANGAS</small>
-        <small>Staff Portal</small>
+        <small>Admin Portal</small>
       </span>
     </a>
     <?php require __DIR__ . "/includes/staff_nav.php"; ?>
@@ -359,6 +359,8 @@ require __DIR__ . "/includes/header.php";
       </div>
 
       <div class="adash-header-actions">
+      <button class="adash-theme-toggle" type="button" data-portal-theme-toggle
+        aria-label="Switch to dark mode"><i class="bi bi-moon-stars"></i></button>
         <!-- Date range (UI only — backend filtering TBD) -->
         <div class="adash-date-range" title="Date range filter (UI preview — backend filtering coming soon)">
           <label>From</label>
@@ -380,7 +382,7 @@ require __DIR__ . "/includes/header.php";
           <ul class="dropdown-menu dropdown-menu-end shadow-sm">
             <li><span class="dropdown-item-text fw-semibold"><?= e($adminName) ?></span></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item" href="admin_staff.php"><i class="bi bi-gear me-2"></i>Settings</a></li>
+            <li><a class="dropdown-item" href="admin_staff.php"><i class="bi bi-person-gear me-2"></i>Settings</a></li>
             <li><a class="dropdown-item" href="admin_audit.php"><i class="bi bi-clock-history me-2"></i>Audit Log</a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item text-danger" href="logout.php"><i class="bi bi-box-arrow-right me-2"></i>Sign out</a></li>
@@ -559,7 +561,7 @@ require __DIR__ . "/includes/header.php";
               <div class="adash-card-title">Household Sizes</div>
               <div class="adash-card-sub">Distribution by member count</div>
             </div>
-            <a class="adash-card-link" href="staff_households.php">Registry <i class="bi bi-arrow-up-right"></i></a>
+            <a class="adash-card-link" href="staff_households.php">Registry</a>
           </div>
           <!-- Summary stats -->
           <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
@@ -638,7 +640,7 @@ require __DIR__ . "/includes/header.php";
               <div class="adash-card-title">Staff Hours</div>
               <div class="adash-card-sub">By position · month to date</div>
             </div>
-            <a class="adash-card-link" href="admin_audit.php">Logs <i class="bi bi-arrow-up-right"></i></a>
+            <a class="adash-card-link" href="admin_audit.php">Logs</a>
           </div>
           <?php if ($analytics["staff_worktime"] !== []): ?>
           <div class="adash-chart-wrap adash-chart-wrap-md">
@@ -705,7 +707,7 @@ require __DIR__ . "/includes/header.php";
               <div class="adash-card-title">Recent Weather Trends</div>
               <div class="adash-card-sub">Current conditions and temperature history</div>
             </div>
-            <a class="adash-card-link" href="admin_weather.php">Weather <i class="bi bi-arrow-up-right"></i></a>
+            <a class="adash-card-link" href="admin_weather.php">Weather</a>
           </div>
 
           <?php if ($currentTemp !== null): ?>
@@ -797,7 +799,7 @@ require __DIR__ . "/includes/header.php";
             </div>
             <div class="adash-card-sub">Active alert status and resident notification delivery</div>
           </div>
-          <a class="adash-card-link" href="admin_disaster.php">Manage <i class="bi bi-arrow-up-right"></i></a>
+          <a class="adash-card-link" href="admin_disaster.php">Manage</a>
         </div>
 
         <div data-adash-tabs>

@@ -163,14 +163,10 @@ require __DIR__ . "/includes/header.php";
     </aside>
     <section class="dashboard-content">
         <header class="dashboard-topbar">
-            <div class="dashboard-search"><i class="bi bi-search"></i><input type="search" value="<?= e(
-                $query,
-            ) ?>" placeholder="Search services, announcements, or information..."
-                    aria-label="Search portal"></div>
-            <div class="dashboard-user"><span class="user-avatar"><i
-                        class="bi bi-person-fill"></i></span><span><strong><?= e(
-                $_SESSION["user"]["full_name"],
-            ) ?></strong><small>Resident</small></span></div>
+            <?php require __DIR__ . "/includes/portal_topbar_brand.php"; ?>
+            <div class="dashboard-user">
+                <?php require __DIR__ . "/includes/resident_account_menu.php"; ?>
+            </div>
         </header>
         <div class="dashboard-main resident-search-main">
             <div class="dashboard-section-heading">
@@ -200,7 +196,6 @@ require __DIR__ . "/includes/header.php";
                             ) ?></small><strong><?= e(
     $result["title"],
 ) ?></strong><span><?= e($result["description"]) ?></span></span>
-                    <i class="bi bi-arrow-up-right resident-search-result-arrow"></i>
                 </a>
                 <?php endforeach; ?>
             </div>

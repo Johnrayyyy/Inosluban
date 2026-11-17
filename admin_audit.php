@@ -444,6 +444,7 @@ require __DIR__ . "/includes/header.php";
                     Portal</small></span></a><?php require __DIR__ .
     "/includes/staff_nav.php"; ?></aside>
     <section class="dashboard-content">
+        <?php require __DIR__ . "/includes/admin_topbar.php"; ?>
         <div class="staff-main">
             <div class="staff-hero compact">
                 <div>
@@ -555,7 +556,7 @@ require __DIR__ . "/includes/header.php";
                                         "month" => $monthValue,
                                     ],
                                 ),
-                        ) ?>">Open time sheet <i class="bi bi-arrow-right"></i></a>
+                        ) ?>">Open time sheet</a>
                     </article>
                     <?php endforeach; ?>
                     <?php if (
