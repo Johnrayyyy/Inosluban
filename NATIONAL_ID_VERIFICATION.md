@@ -35,9 +35,9 @@ py -3.13 -m venv .venv-national-id
 .\.venv-national-id\Scripts\python.exe -m uvicorn national_id_service.app:app --host 127.0.0.1 --port 8000
 ```
 
-The Docker Compose service is private, shares the Tailscale network namespace,
-and is not published as a host port. PHP uses `http://127.0.0.1:8000` in that
-same namespace. The service must not be exposed publicly.
+On Render, deploy the National ID service only as a private service or within a
+separate private network. PHP must use the private service URL and a configured
+service token. Do not publish the verification API through a public web service.
 
 First startup may download model data for RapidOCR and InsightFace (`buffalo_l`).
 Plan for

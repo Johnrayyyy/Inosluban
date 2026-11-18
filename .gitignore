@@ -3,3 +3,4 @@ vendor/
 .venv-face/
 __pycache__/
 *.py[cod]
+prod-ca-2021.crt
