@@ -237,13 +237,47 @@ py -3.13 -m venv .venv-national-id
 .\.venv-national-id\Scripts\python.exe -m uvicorn national_id_service.app:app --host 127.0.0.1 --port 8000
 ```
 
-On Render, deploy the National ID service only as a private service or within a
-separate private network. PHP must use the private service URL and a configured
-service token. Do not publish the verification API through a public web service.
+### Deploy the Python verifier on Render
 
-First startup may download model data for RapidOCR. Plan for CPU, RAM, disk,
-and model-cache space; verify these requirements on the target Python/Docker
-image before production use.
+The root [`render.yaml`](../../render.yaml) creates a separate Render private
+service for the verifier. In Render, create a Blueprint from this repository
+and sync the Blueprint. It builds
+[`national_id_service/Dockerfile`](../../national_id_service/Dockerfile) with
+`national_id_service/` as the Docker context, so PHP sources, uploads, and local
+virtual environments are not sent in the verifier's build context. The service
+listens on port `8000`, has no public URL, and uses the `1c-2g` plan for the
+image-processing workload. The Blueprint defaults to Singapore; if your PHP
+service is already deployed in another region, change the verifier's `region`
+in `render.yaml` to match before syncing.
+Check Render's current pricing before deploying; this is a paid compute plan.
+
+The Blueprint also creates the `inosluban-national-id-auth` environment group
+with a generated `NATIONAL_ID_SERVICE_TOKEN`, and attaches it to the private
+service. Configure the PHP web service as follows:
+
+1. Keep PHP and the verifier in the same Render workspace and region so they
+   can use Render's private network.
+2. Attach the `inosluban-national-id-auth` environment group to the PHP service
+   so both services receive the same token.
+3. Set the PHP service's `NATIONAL_ID_SERVICE_URL` to
+   `http://<private-service-address>`, using the verifier's **Service Address**
+   from its Render **Connect** panel (include port `8000` if it is not shown).
+4. Set `NATIONAL_ID_SERVICE_TIMEOUT` to `60` on PHP to allow time for OCR.
+   Keep PHP's `NATIONAL_ID_MAX_IMAGE_BYTES` and `NATIONAL_ID_MAX_PIXELS` at
+   `5000000` and `12000000`, matching the verifier.
+5. Deploy PHP after setting its environment variables.
+
+Do not expose `/verify-id` as a public web service. If PHP is hosted outside
+Render, it cannot reach this private service; use a private network connection
+instead of making the image-verification API public. The verifier does not
+connect to PostgreSQL or retain submitted images; PHP sends temporary files and
+stores only the verification result.
+
+The verifier requires its service token when
+`NATIONAL_ID_REQUIRE_SERVICE_TOKEN=true`. Its `/health` endpoint returns HTTP
+200 only when QR/OCR dependencies and required service configuration are ready.
+The pinned RapidOCR package includes the model files; startup loads them into
+memory, so wait for the service to finish starting before testing submissions.
 
 ## Configuration names
 
@@ -251,6 +285,7 @@ Only variable names are listed here; values must remain private:
 
 - `NATIONAL_ID_SERVICE_URL`
 - `NATIONAL_ID_SERVICE_TOKEN`
+- `NATIONAL_ID_REQUIRE_SERVICE_TOKEN`
 - `NATIONAL_ID_SERVICE_TIMEOUT`
 - `NATIONAL_ID_MAX_IMAGE_BYTES`
 - `NATIONAL_ID_MAX_PIXELS`

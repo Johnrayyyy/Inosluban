@@ -46,6 +46,7 @@ routine source organization.
 - FastAPI service: `national_id_service/app.py`
 - Service dependencies: `national_id_service/requirements-national-id.txt`
 - Service Docker image: `national_id_service/Dockerfile`
+- Render private-service Blueprint: `render.yaml`
 - Unit tests: `tests/test_national_id_service.py`
 - Operations guide: `docs/features/NATIONAL_ID_VERIFICATION.md`
 

@@ -5,6 +5,7 @@ import io
 import json
 import os
 import re
+import secrets
 import uuid
 from datetime import date, datetime
 from typing import Any
@@ -24,6 +25,10 @@ except ImportError:
 MAX_IMAGE_BYTES = int(os.getenv("NATIONAL_ID_MAX_IMAGE_BYTES", "5000000"))
 MAX_PIXELS = int(os.getenv("NATIONAL_ID_MAX_PIXELS", "12000000"))
 SERVICE_TOKEN = os.getenv("NATIONAL_ID_SERVICE_TOKEN", "")
+REQUIRE_SERVICE_TOKEN = (
+    os.getenv("NATIONAL_ID_REQUIRE_SERVICE_TOKEN", "false").strip().lower()
+    in {"1", "true", "yes"}
+)
 
 app = FastAPI(title="Barangay Inosluban National ID pre-verification")
 ocr_engine = RapidOCR() if RapidOCR is not None else None
@@ -57,7 +62,15 @@ def _safe_verification_id(value: str | None) -> str:
 
 
 def _require_service_token(token: str | None) -> None:
-    if SERVICE_TOKEN and token != SERVICE_TOKEN:
+    if REQUIRE_SERVICE_TOKEN and not SERVICE_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="Service credential is not configured.",
+        )
+    if SERVICE_TOKEN and not secrets.compare_digest(
+        (token or "").encode("utf-8"),
+        SERVICE_TOKEN.encode("utf-8"),
+    ):
         raise HTTPException(status_code=401, detail="Invalid service credential.")
 
 
@@ -233,11 +246,19 @@ def _verify_images(
 
 @app.get("/health")
 def health() -> dict[str, str]:
+    ready = (
+        zxingcpp is not None
+        and ocr_engine is not None
+        and (not REQUIRE_SERVICE_TOKEN or bool(SERVICE_TOKEN))
+    )
+    if not ready:
+        raise HTTPException(
+            status_code=503,
+            detail="Verification service is not ready.",
+        )
     return {
         "status": "ok",
-        "ready": "true"
-        if zxingcpp is not None and ocr_engine is not None
-        else "degraded",
+        "ready": "true",
     }
 
 
