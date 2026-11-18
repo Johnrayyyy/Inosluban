@@ -201,9 +201,7 @@ require __DIR__ . "/includes/header.php";
             </div>
             <?php endif; ?>
         </div>
-        <footer class="dashboard-footer"><span>Connect. Collaborate. Grow Together.</span><small>© <?= date(
-            "Y",
-        ) ?> Barangay Inosluban. All rights reserved.</small></footer>
+        <?php require __DIR__ . "/includes/resident_dashboard_footer.php"; ?>
     </section>
 </main>
 <?php require __DIR__ . "/includes/footer.php"; ?>

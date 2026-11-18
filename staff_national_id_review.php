@@ -166,15 +166,17 @@ require __DIR__ . "/includes/header.php";
                             : ($review["front_last_name_match"]
                                 ? "Pass"
                                 : "Mismatch") ?></dd>
-                        <dt class="col-sm-5">Selfie quality</dt><dd class="col-sm-7"><?= $review[
+                        <dt class="col-sm-5">Selfie quality (legacy)</dt><dd class="col-sm-7"><?= $review[
                             "selfie_quality_pass"
-                        ]
-                            ? "Pass"
-                            : "Review" ?></dd>
-                        <dt class="col-sm-5">Face comparison</dt><dd class="col-sm-7"><?= $review[
+                        ] === null
+                            ? "Not collected"
+                            : ($review["selfie_quality_pass"]
+                                ? "Pass"
+                                : "Review") ?></dd>
+                        <dt class="col-sm-5">Face comparison (legacy)</dt><dd class="col-sm-7"><?= $review[
                             "face_match_pass"
                         ] === null
-                            ? "Unavailable"
+                            ? "Not collected"
                             : ($review["face_match_pass"]
                                 ? "Pass"
                                 : "Review") ?></dd>

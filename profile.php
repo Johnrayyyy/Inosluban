@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . "/includes/bootstrap.php";
 require_once __DIR__ . "/config/mailer.php";
+require_once __DIR__ . "/includes/national_id.php";
 require_resident();
+ensure_national_id_schema();
 
 $residentId = (int) $_SESSION["user"]["resident_id"];
 $errors = [];
@@ -104,6 +106,14 @@ try {
         http_response_code(404);
         exit("Resident profile not found.");
     }
+    $verificationStatement = db()->prepare(
+        "SELECT status, id_format, submitted_at, processed_at,
+                reviewed_at, staff_reason
+         FROM national_id_verification
+         WHERE resident_id = :resident_id",
+    );
+    $verificationStatement->execute(["resident_id" => $residentId]);
+    $nationalIdVerification = $verificationStatement->fetch();
 
     $values = [];
     foreach ($fields as $field) {
@@ -298,11 +308,7 @@ try {
                         "profile",
                         ["image/jpeg" => "jpg", "image/png" => "png"],
                     );
-                    $validIdPath = profile_upload("valid_id", "valid-id", [
-                        "image/jpeg" => "jpg",
-                        "image/png" => "png",
-                        "application/pdf" => "pdf",
-                    ]);
+                    $validIdPath = null;
                 } catch (RuntimeException $exception) {
                     $errors[] = $exception->getMessage();
                 }
@@ -392,12 +398,44 @@ try {
 }
 
 $pageTitle = "Profile settings";
-$idVerificationStatus = $profile["valid_id_file_path"]
-    ? "Pending validation"
-    : "Not submitted";
-$idVerificationClass = $profile["valid_id_file_path"]
-    ? "profile-status-pending"
-    : "profile-status-missing";
+$nationalIdStatus = $nationalIdVerification["status"] ?? null;
+$nationalIdSubmissionBlocked = in_array(
+    $nationalIdStatus,
+    ["PROCESSING", "PRE_VERIFIED", "PENDING_STAFF_REVIEW", "STAFF_APPROVED"],
+    true,
+);
+$idVerificationStatus = "Not submitted";
+$idVerificationClass = "profile-status-missing";
+$idVerificationHint = "Submit a valid government ID to begin validation.";
+if ($nationalIdStatus === "PROCESSING") {
+    $idVerificationStatus = "Processing";
+    $idVerificationClass = "profile-status-pending";
+    $idVerificationHint = "Your local pre-verification is being processed.";
+} elseif ($nationalIdStatus === "PRE_VERIFIED") {
+    $idVerificationStatus = "Pre-verified";
+    $idVerificationClass = "profile-status-preverified";
+    $idVerificationHint = "Local pre-check passed; this is not official PSA verification.";
+} elseif ($nationalIdStatus === "PENDING_STAFF_REVIEW") {
+    $idVerificationStatus = "Pending staff review";
+    $idVerificationClass = "profile-status-pending";
+    $idVerificationHint = "Your case is waiting for barangay staff review.";
+} elseif ($nationalIdStatus === "RETRY_REQUIRED") {
+    $idVerificationStatus = "Retry required";
+    $idVerificationClass = "profile-status-rejected";
+    $idVerificationHint = "Capture clearer photos and resubmit.";
+} elseif ($nationalIdStatus === "STAFF_APPROVED") {
+    $idVerificationStatus = "Approved by staff";
+    $idVerificationClass = "profile-status-approved";
+    $idVerificationHint = "Staff approved this local pre-verification. It is not official PSA verification.";
+} elseif ($nationalIdStatus === "STAFF_REJECTED") {
+    $idVerificationStatus = "Rejected";
+    $idVerificationClass = "profile-status-rejected";
+    $idVerificationHint = "Staff rejected the submission. Resubmit with clearer, complete photos.";
+} elseif ($nationalIdStatus === "OFFICIAL_CHECK_RECORDED") {
+    $idVerificationStatus = "Official check recorded";
+    $idVerificationClass = "profile-status-approved";
+    $idVerificationHint = "An authorized official check is recorded; this portal does not itself perform PSA verification.";
+}
 $profileGroups = [
     "personal" => [
         "title" => "Personal information",
@@ -584,26 +622,200 @@ require __DIR__ . "/includes/header.php";
                         <?php endforeach; ?>
                         <section class="profile-section profile-panel" data-profile-panel="account"
                             hidden>
-                            <div class="profile-section-heading"><i class="bi bi-shield-check"></i>
-                                <div>
-                                    <h2>Account security &amp; verification</h2>
-                                    <p>Protect your account and verify your identity.</p>
+                            <div class="profile-subsection">
+                                <div class="profile-subsection-heading">
+                                    <i class="bi bi-person-circle"></i>
+                                    <div>
+                                        <h3>Profile photo</h3>
+                                        <p>Capture or upload a clear photo for your resident account.</p>
+                                    </div>
+                                </div>
+                                <div class="profile-form-grid">
+                                    <div>
+                                        <label class="form-label" for="profile_image">Choose profile photo</label>
+                                        <input class="form-control profile-input" id="profile_image"
+                                            name="profile_image" type="file" accept="image/jpeg,image/png" capture="user">
+                                        <div class="profile-camera-actions">
+                                            <button class="btn btn-outline-primary btn-sm" type="button"
+                                                data-profile-camera data-profile-camera-target="profile_image"
+                                                data-profile-camera-facing="user" data-profile-camera-shape="face">
+                                                <i class="bi bi-camera me-1"></i>Use camera
+                                            </button>
+                                            <img class="profile-camera-thumbnail" data-profile-camera-thumbnail="profile_image"
+                                                alt="Captured profile photo preview" hidden>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="profile-form-grid">
-                                <div><label class="form-label" for="profile_image">Profile
-                                        photo</label><input class="form-control profile-input"
-                                        id="profile_image" name="profile_image" type="file"
-                                        accept="image/jpeg,image/png"></div>
-                                <div><label class="form-label" for="valid_id">Valid ID</label><input
-                                        class="form-control profile-input" id="valid_id"
-                                        name="valid_id" type="file"
-                                        accept="image/jpeg,image/png,application/pdf"><small
-                                        class="profile-help">JPG, PNG, or PDF up to 5 MB.</small>
+                            <div class="profile-subsection">
+                                <div class="profile-subsection-heading">
+                                    <i class="bi bi-shield-lock-fill"></i>
+                                    <div>
+                                        <h3>Password reset</h3>
+                                        <p>Change your password through email verification.</p>
+                                    </div>
                                 </div>
-                            </div><button class="btn btn-outline-primary mt-3" type="button"
-                                data-password-modal-open><i class="bi bi-key me-2"></i>Change
-                                password</button>
+                                <button class="btn btn-outline-primary" type="button" data-password-modal-open>
+                                    <i class="bi bi-key me-2"></i>Change password
+                                </button>
+                            </div>
+                            <div class="profile-subsection national-id-profile-section">
+                                <div class="profile-subsection-heading">
+                                    <i class="bi bi-person-vcard-fill"></i>
+                                    <div>
+                                        <h3>National ID local pre-verification</h3>
+                                        <p>This is a local pre-check, not official PSA, PhilSys, or NIDAS verification.
+                                    Only the front and back of your ID are used; no selfie or face comparison is performed.
+                                    Uncertain QR or text checks may still require staff review.</p>
+                                    </div>
+                                </div>
+                                <?php
+                                $trackerSubmitted = $nationalIdStatus !== null;
+                                $trackerProcessed = in_array($nationalIdStatus, [
+                                    "PRE_VERIFIED",
+                                    "PENDING_STAFF_REVIEW",
+                                    "RETRY_REQUIRED",
+                                    "STAFF_APPROVED",
+                                    "STAFF_REJECTED",
+                                    "OFFICIAL_CHECK_RECORDED",
+                                ], true);
+                                $trackerAwaitingStaff = $nationalIdStatus === "PENDING_STAFF_REVIEW";
+                                $trackerNeedsAction = in_array($nationalIdStatus, [
+                                    "RETRY_REQUIRED",
+                                    "STAFF_REJECTED",
+                                ], true);
+                                $trackerFinished = in_array($nationalIdStatus, [
+                                    "PRE_VERIFIED",
+                                    "STAFF_APPROVED",
+                                    "STAFF_REJECTED",
+                                    "OFFICIAL_CHECK_RECORDED",
+                                ], true);
+                                $trackerStep1Class = $trackerSubmitted ? "is-complete" : "";
+                                $trackerStep2Class = $trackerProcessed
+                                    ? "is-complete"
+                                    : ($nationalIdStatus === "PROCESSING" ? "is-active" : "");
+                                $trackerStep3Class = $trackerFinished
+                                    ? "is-complete"
+                                    : (in_array($nationalIdStatus, [
+                                        "PENDING_STAFF_REVIEW",
+                                        "RETRY_REQUIRED",
+                                        "STAFF_REJECTED",
+                                    ], true) ? "is-active" : "");
+                                ?>
+                                <?php if ($trackerSubmitted): ?>
+                                <div class="national-id-tracker" aria-label="National ID verification progress">
+                                    <div class="national-id-tracker-step <?= e($trackerStep1Class) ?>">
+                                        <span><i class="bi <?= $trackerSubmitted ? "bi-check-lg" : "bi-circle" ?>"></i></span>
+                                        <div><strong>Submitted</strong><small><?= e(
+                                            $nationalIdVerification["submitted_at"]
+                                                ? format_app_datetime(
+                                                    (string) $nationalIdVerification["submitted_at"],
+                                                    "M j, Y · g:i A",
+                                                )
+                                                : "Waiting",
+                                        ) ?></small></div>
+                                    </div>
+                                    <div class="national-id-tracker-step <?= e($trackerStep2Class) ?>">
+                                        <span><i class="bi <?= $trackerProcessed ? "bi-check-lg" : ($nationalIdStatus === "PROCESSING" ? "bi-hourglass-split" : "bi-circle") ?>"></i></span>
+                                        <div><strong>Local pre-check</strong><small><?=
+                                            $trackerProcessed
+                                                ? "Processing complete"
+                                                : ($nationalIdStatus === "PROCESSING" ? "Processing now" : "Not started")
+                                        ?></small></div>
+                                    </div>
+                                    <div class="national-id-tracker-step <?= e($trackerStep3Class) ?>">
+                                        <span><i class="bi <?= $trackerFinished ? "bi-check-lg" : (in_array($nationalIdStatus, ["PENDING_STAFF_REVIEW", "RETRY_REQUIRED", "STAFF_REJECTED"], true) ? "bi-hourglass-split" : "bi-circle") ?>"></i></span>
+                                        <div><strong><?= $trackerAwaitingStaff ? "Staff review" : ($trackerNeedsAction ? "Action required" : "Final result") ?></strong><small><?=
+                                            $trackerFinished
+                                                ? e($idVerificationStatus)
+                                                : ($trackerAwaitingStaff
+                                                    ? "Awaiting barangay staff"
+                                                    : ($trackerNeedsAction ? "Resubmit clearer photos" : "Waiting for submission"))
+                                        ?></small></div>
+                                    </div>
+                                </div>
+                                <?php if ($nationalIdVerification["reviewed_at"]): ?>
+                                <p class="national-id-review-time">
+                                    Final review: <?= e(format_app_datetime(
+                                        (string) $nationalIdVerification["reviewed_at"],
+                                        "M j, Y · g:i A",
+                                    )) ?>
+                                </p>
+                                <?php endif; ?>
+                                <?php if ($nationalIdStatus === "STAFF_REJECTED" && $nationalIdVerification["staff_reason"]): ?>
+                                <p class="national-id-review-reason"><strong>Staff reason:</strong> <?= e(
+                                    (string) $nationalIdVerification["staff_reason"],
+                                ) ?></p>
+                                <?php endif; ?>
+                                <?php else: ?>
+                                <div class="national-id-not-submitted">
+                                    <i class="bi bi-person-vcard"></i>
+                                    <span><strong>No National ID submitted</strong><small>Complete the captures below to start your ID process.</small></span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if ($nationalIdSubmissionBlocked): ?>
+                                    <div class="alert <?= in_array($nationalIdStatus, ["PRE_VERIFIED", "STAFF_APPROVED"], true)
+                                        ? "alert-success"
+                                        : "alert-info" ?> py-2" role="status">
+                                        <strong><?= e($idVerificationStatus) ?>.</strong>
+                                        <?= e($idVerificationHint) ?>
+                                    </div>
+                                <?php else: ?>
+                                <div id="national-id-profile-form">
+                                    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label" for="national_id_format_profile">ID format</label>
+                                            <select class="form-select" id="national_id_format_profile" name="id_format" required>
+                                                <option value="">Select format</option>
+                                                <option value="PhilID">PhilID (physical PVC)</option>
+                                                <option value="ePhilID">ePhilID (printed)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="profile-form-grid mt-3">
+                                        <?php foreach ([
+                                            "front" => ["Front of ID", "environment", "card"],
+                                            "back" => ["Back with QR", "environment", "card"],
+                                        ] as $captureName => $capture): ?>
+                                        <div>
+                                            <label class="form-label" for="national_<?= e($captureName) ?>_image"><?= e($capture[0]) ?></label>
+                                            <input class="form-control profile-input" type="file"
+                                                id="national_<?= e($captureName) ?>_image"
+                                                name="<?= e($captureName) ?>_image"
+                                                accept="image/jpeg,image/png"
+                                                capture="<?= e($capture[1]) ?>">
+                                            <div class="profile-camera-actions">
+                                                <button class="btn btn-outline-primary btn-sm" type="button"
+                                                    data-profile-camera data-profile-camera-target="national_<?= e($captureName) ?>_image"
+                                                    data-profile-camera-facing="<?= e($capture[1]) ?>"
+                                                    data-profile-camera-shape="<?= e($capture[2]) ?>">
+                                                    <i class="bi bi-camera me-1"></i>Capture
+                                                </button>
+                                                <img class="profile-camera-thumbnail"
+                                                    data-profile-camera-thumbnail="national_<?= e($captureName) ?>_image"
+                                                    alt="Captured National ID preview" hidden>
+                                            </div>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <div class="form-check mt-3">
+                                        <input class="form-check-input" type="checkbox" id="national_id_consent_profile"
+                                            name="national_id_consent" value="accepted" required>
+                                        <label class="form-check-label" for="national_id_consent_profile">
+                                            I accept <a href="#" data-bs-toggle="modal"
+                                                data-bs-target="#nationalIdTermsModal">terms and conditions</a>.
+                                        </label>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 mt-3">
+                                        <button class="btn btn-primary" type="button" id="national-id-submit">
+                                            Submit National ID pre-check
+                                        </button>
+                                        <span class="small" data-national-id-status role="status"></span>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
                         </section>
                         <div class="profile-actions"><a class="btn btn-light"
                                 href="dashboard.php">Cancel</a><button class="btn btn-primary"
@@ -615,9 +827,7 @@ require __DIR__ . "/includes/header.php";
                 <aside class="profile-card profile-summary"><button class="profile-avatar"
                         type="button" data-profile-photo-trigger aria-label="Change profile photo"><?php if (
                     $profile["profile_image_path"]
-                ): ?><img data-profile-photo-preview src="<?= e(
-    $profile["profile_image_path"],
-) ?>" alt="Profile photo"><?php else: ?><i class="bi bi-person-fill"
+                ): ?><img data-profile-photo-preview src="resident_profile_file.php?kind=profile" alt="Profile photo"><?php else: ?><i class="bi bi-person-fill"
                             data-profile-photo-placeholder></i><?php endif; ?><span
                             class="profile-avatar-overlay"><i
                                 class="bi bi-camera-fill"></i><small>Change
@@ -649,18 +859,35 @@ require __DIR__ . "/includes/header.php";
                         <div class="profile-id-status"><span><i class="bi bi-patch-check-fill"></i>
                                 ID verification status</span><strong class="<?= e(
     $idVerificationClass,
-) ?>"><?= e($idVerificationStatus) ?></strong><small><?= $profile[
-    "valid_id_file_path"
-]
-    ? "Your submitted ID is awaiting barangay staff validation."
-    : "Submit a valid government ID to begin validation." ?></small></div>
-                    </div><?php if (
-    $profile["valid_id_file_path"]
-): ?><a class="profile-id-link" href="<?= e(
-    $profile["valid_id_file_path"],
-) ?>" target="_blank" rel="noopener"><i class="bi bi-card-image"></i> View submitted
-                        ID</a><?php endif; ?>
+) ?>"><?= e($idVerificationStatus) ?></strong><small><?= e($idVerificationHint) ?></small></div>
+                    </div>
                 </aside>
+            </div>
+        </div>
+        <div class="modal fade auth-modal" id="nationalIdTermsModal" tabindex="-1"
+            aria-labelledby="nationalIdTermsModalTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 class="modal-title fs-5" id="nationalIdTermsModalTitle">National ID pre-verification terms and conditions</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>I consent to the private processing of the front and back ID images and QR-extracted details
+                            for <?= e(NATIONAL_ID_PRIVACY_PURPOSE) ?> by authorized personnel.</p>
+                        <p>Automated checks may be used. Uncertain cases may require staff review. This is a local
+                            pre-check and is not official PSA, PhilSys, NIDAS, or cryptographic identity verification.</p>
+                        <p>No selfie or face comparison is collected. This process does not confirm that the person
+                            submitting the ID is its holder.</p>
+                        <p><strong>Retention:</strong> <?= e(NATIONAL_ID_PRIVACY_RETENTION_TEXT) ?>.</p>
+                        <p><strong>Contact/DPO:</strong> <?= e(NATIONAL_ID_PRIVACY_CONTACT) ?>.</p>
+                        <p>Raw front and back images are submitted temporarily for verification and are not
+                            intended to be retained as resident profile uploads.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="profile-modal <?= $passwordPending
@@ -701,8 +928,13 @@ require __DIR__ . "/includes/header.php";
                         verification code</button></form><?php endif; ?>
             </div>
         </div>
-        <footer class="dashboard-footer"><span>Connect. Collaborate. Grow Together.</span><small>(c)
-                2026 Barangay Inosluban. All rights reserved.</small></footer>
+        <?php require __DIR__ . "/includes/resident_dashboard_footer.php"; ?>
     </section>
 </main>
+<?php $additionalScripts = [
+    "assets/js/profile-camera.js?v=" . hash_file(
+        "sha256",
+        __DIR__ . "/assets/js/profile-camera.js",
+    ),
+]; ?>
 <?php require __DIR__ . "/includes/footer.php"; ?>

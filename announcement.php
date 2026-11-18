@@ -137,8 +137,7 @@ require __DIR__ . "/includes/header.php";
                 </aside>
             </div>
         </div>
-        <footer class="dashboard-footer"><span>Connect. Collaborate. Grow Together.</span><small>©
-                2026 Barangay Inosluban. All rights reserved.</small></footer>
+        <?php require __DIR__ . "/includes/resident_dashboard_footer.php"; ?>
     </section>
 </main>
 <?php require __DIR__ . "/includes/footer.php"; ?>

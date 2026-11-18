@@ -1,6 +1,7 @@
 .env
 vendor/
 .venv-face/
+.venv-national-id/
 __pycache__/
 *.py[cod]
 prod-ca-2021.crt

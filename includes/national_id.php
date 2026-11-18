@@ -59,7 +59,7 @@ function national_id_upload_error_message(int $error): string
     return match ($error) {
         UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE, UPLOAD_ERR_PARTIAL =>
             "National ID images must be complete and within the configured size limit.",
-        UPLOAD_ERR_NO_FILE => "Upload all three National ID images.",
+        UPLOAD_ERR_NO_FILE => "Upload both front and back National ID images.",
         default => "The National ID image upload could not be processed.",
     };
 }
@@ -70,7 +70,7 @@ function national_id_prepare_upload(
 ): string {
     $upload = $_FILES[$field] ?? null;
     if (!is_array($upload) || !isset($upload["error"], $upload["tmp_name"])) {
-        throw new RuntimeException("Upload all three National ID images.");
+        throw new RuntimeException("Upload both front and back National ID images.");
     }
     if ((int) $upload["error"] !== UPLOAD_ERR_OK) {
         throw new RuntimeException(
@@ -130,9 +130,6 @@ function national_id_service_result(array $result): array
             "qr_decoded",
             "front_pcn_match",
             "front_last_name_match",
-            "selfie_one_face",
-            "selfie_quality_pass",
-            "face_match_pass",
         ]
         as $check
     ) {
@@ -169,17 +166,17 @@ function national_id_verify_uploads(): array
 
     $paths = [];
     try {
-        foreach (["front_image", "back_image", "selfie_image"] as $field) {
+        foreach (["front_image", "back_image"] as $field) {
             $paths[$field] = national_id_prepare_upload($field, $directory);
         }
         $postFields = [];
         foreach ($paths as $field => $path) {
             $postFields[$field] = new CURLFile($path, "image/*", $field . ".jpg");
         }
-        $headers = ["Accept: application/json"];
         if (NATIONAL_ID_SERVICE_TOKEN !== "") {
-            $headers[] = "Authorization: Bearer " . NATIONAL_ID_SERVICE_TOKEN;
+            $postFields["service_token"] = NATIONAL_ID_SERVICE_TOKEN;
         }
+        $headers = ["Accept: application/json"];
         $curl = curl_init(NATIONAL_ID_SERVICE_URL . "/verify-id");
         if ($curl === false) {
             throw new RuntimeException("National ID verification is unavailable.");
@@ -208,6 +205,16 @@ function national_id_verify_uploads(): array
                     "): " .
                     substr($curlError, 0, 200),
             );
+            if ($httpCode === 422) {
+                throw new RuntimeException(
+                    "The verification service could not read one or more images. Retake clear photos and try again.",
+                );
+            }
+            if ($httpCode === 413) {
+                throw new RuntimeException(
+                    "The photos are too large for the server. Choose smaller JPG or PNG images and try again.",
+                );
+            }
             throw new RuntimeException(
                 "National ID verification is temporarily unavailable. Please retry.",
             );
@@ -241,11 +248,16 @@ function national_id_result_for_storage(array $result): array
         "qr_decoded" => $checks["qr_decoded"] ?? false,
         "front_pcn_match" => $checks["front_pcn_match"] ?? null,
         "front_last_name_match" => $checks["front_last_name_match"] ?? null,
-        "selfie_quality_pass" => $checks["selfie_quality_pass"] ?? null,
-        "face_match_pass" => $checks["face_match_pass"] ?? null,
-        "face_metric" => $result["face_metric"] ?? null,
-        "face_score" => $result["face_score"] ?? null,
+        "selfie_quality_pass" => null,
+        "face_match_pass" => null,
+        "face_metric" => null,
+        "face_score" => null,
         "review_reasons" => $result["review_reasons"] ?? [],
         "extracted" => $result["extracted"] ?? [],
     ];
+}
+
+function national_id_database_boolean(?bool $value): ?string
+{
+    return $value === null ? null : ($value ? "true" : "false");
 }

@@ -427,7 +427,14 @@ const profilePhotoTrigger = document.querySelector(
 );
 if (profilePhotoInput && profilePhotoTrigger) {
   profilePhotoTrigger.addEventListener("click", () => {
-    profilePhotoInput.click();
+    const cameraButton = document.querySelector(
+      '[data-profile-camera-target="profile_image"]',
+    );
+    if (cameraButton) {
+      cameraButton.click();
+    } else {
+      profilePhotoInput.click();
+    }
   });
   profilePhotoInput.addEventListener("change", () => {
     const file = profilePhotoInput.files[0];

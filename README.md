@@ -201,19 +201,29 @@ data. Back up the database separately.
 
 ## Project layout
 
-- `index.php`, `register.php`, and other root PHP files: portal pages and
-  request handlers.
+- Root `*.php` entry files: browser pages and HTTP request handlers. Root entries
+  are intentional because they are the current Apache URLs and must remain at
+  their existing locations.
 - `includes/`: shared database/session helpers, authorization, notifications,
   email templates, and business logic.
 - `config/`: environment configuration and SMTP mailer.
-- `assets/`: CSS, JavaScript, and images.
+- `assets/`: static CSS, JavaScript, and images.
 - `templates/emails/`: HTML email templates.
 - `storage/`: protected document templates and uploaded files.
+- `storage/models/`: protected face-recognition model data.
+- `database/migrations/`: additive PostgreSQL migration and rollback scripts.
+- `national_id_service/`: separate FastAPI National ID service and its
+  Python requirements.
+- `tests/`: Python unit tests for the face and National ID services.
+- `docs/features/`: feature-specific implementation and debugging guides.
 - `schema.sql`: PostgreSQL base schema.
 
 For a feature overview, see **Main features** above. Start with `index.php` to
 trace the login flow, `includes/bootstrap.php` for shared session/database
 setup, and the relevant page in the project root for a specific service.
+See [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md) for placement
+rules and [National ID pre-verification](./docs/features/NATIONAL_ID_VERIFICATION.md)
+for the detailed verification and debugging workflow.
 
 Run the face-verifier unit tests with:
 

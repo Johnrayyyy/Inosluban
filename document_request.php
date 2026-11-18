@@ -4,10 +4,13 @@ declare(strict_types=1);
 require_once __DIR__ . "/includes/bootstrap.php";
 require_once __DIR__ . "/includes/document_pickup.php";
 require_once __DIR__ . "/includes/document_request_email.php";
+require_once __DIR__ . "/includes/national_id.php";
 require_once __DIR__ . "/config/mailer.php";
 require_resident();
+ensure_national_id_schema();
 
 $residentId = (int) $_SESSION["user"]["resident_id"];
+$canRequestDocuments = false;
 $documentTypes = [
     "Barangay Clearance",
     "Certificate of Indigency",
@@ -97,6 +100,16 @@ function document_request_validate(
 }
 
 try {
+    $verificationStatement = db()->prepare(
+        "SELECT status FROM national_id_verification WHERE resident_id = :resident_id",
+    );
+    $verificationStatement->execute(["resident_id" => $residentId]);
+    $canRequestDocuments = in_array(
+        $verificationStatement->fetchColumn(),
+        ["PRE_VERIFIED", "STAFF_APPROVED", "OFFICIAL_CHECK_RECORDED"],
+        true,
+    );
+
     $residentStatement = db()->prepare(
         'SELECT first_name, middle_name, last_name, birthdate, complete_address, purok, civil_status, email
          FROM resident WHERE resident_id = :resident_id',
@@ -155,79 +168,89 @@ try {
             header("Location: document_request.php");
             exit();
         }
-        foreach (array_keys($draft) as $field) {
-            if (array_key_exists($field, $_POST)) {
-                $draft[$field] = trim((string) $_POST[$field]);
+        if (!$canRequestDocuments) {
+            $errors[] =
+                "Complete National ID pre-verification before submitting a document request.";
+        } else {
+            foreach (array_keys($draft) as $field) {
+                if (array_key_exists($field, $_POST)) {
+                    $draft[$field] = trim((string) $_POST[$field]);
+                }
             }
-        }
-        if ($draft["purpose"] !== "Other") {
-            $draft["purpose_other"] = "";
-        }
-        $errors = document_request_validate(
-            $draft,
-            $step,
-            $documentTypes,
-            $purposes,
-            $civilStatuses,
-        );
+            if ($draft["purpose"] !== "Other") {
+                $draft["purpose_other"] = "";
+            }
+            $errors = document_request_validate(
+                $draft,
+                $step,
+                $documentTypes,
+                $purposes,
+                $civilStatuses,
+            );
 
-        if ($errors === []) {
-            $_SESSION["document_request_draft"] = $draft;
-            if ($action === "back") {
-                $step = max(1, $step - 1);
-            } elseif ($action === "next") {
-                $step = min(3, $step + 1);
-            } elseif ($action === "submit" && $step === 3) {
-                $statement = db()->prepare(
-                    'INSERT INTO document_request (
-                        resident_id, document_type, name, birthday, age, purok_address,
-                        civil_status, purpose, purpose_other
-                    ) VALUES (
-                        :resident_id, :document_type, :name, :birthday, :age, :purok_address,
-                        :civil_status, :purpose, NULLIF(:purpose_other, \'\')
-                    ) RETURNING request_id, document_type, name, purpose, purpose_other, request_date',
-                );
-                $statement->execute([
-                    "resident_id" => $residentId,
-                    "document_type" => $draft["document_type"],
-                    "name" => $draft["name"],
-                    "birthday" => $draft["birthday"],
-                    "age" => (int) $draft["age"],
-                    "purok_address" => $draft["purok_address"],
-                    "civil_status" => $draft["civil_status"],
-                    "purpose" => $draft["purpose"],
-                    "purpose_other" => $draft["purpose_other"],
-                ]);
-                $request = $statement->fetch();
-                $trackingUrl =
-                    APP_BASE_URL .
-                    "/document_request_status.php?id=" .
-                    (int) $request["request_id"];
-                $emailSent = false;
-                $emailAddress = trim((string) ($resident["email"] ?? ""));
-                if (
-                    $emailAddress !== "" &&
-                    filter_var($emailAddress, FILTER_VALIDATE_EMAIL)
-                ) {
-                    $emailSent = sendEmail(
-                        $emailAddress,
-                        "Document request confirmation #" .
-                            (int) $request["request_id"],
-                        document_request_email_html($request, $trackingUrl),
+            if ($errors === []) {
+                $_SESSION["document_request_draft"] = $draft;
+                if ($action === "back") {
+                    $step = max(1, $step - 1);
+                } elseif ($action === "next") {
+                    $step = min(3, $step + 1);
+                } elseif ($action === "submit" && $step === 3) {
+                    $statement = db()->prepare(
+                        'INSERT INTO document_request (
+                            resident_id, document_type, name, birthday, age, purok_address,
+                            civil_status, purpose, purpose_other
+                        ) VALUES (
+                            :resident_id, :document_type, :name, :birthday, :age, :purok_address,
+                            :civil_status, :purpose, NULLIF(:purpose_other, \'\')
+                        ) RETURNING request_id, document_type, name, purpose, purpose_other, request_date',
+                        );
+                    $statement->execute([
+                        "resident_id" => $residentId,
+                        "document_type" => $draft["document_type"],
+                        "name" => $draft["name"],
+                        "birthday" => $draft["birthday"],
+                        "age" => (int) $draft["age"],
+                        "purok_address" => $draft["purok_address"],
+                        "civil_status" => $draft["civil_status"],
+                        "purpose" => $draft["purpose"],
+                        "purpose_other" => $draft["purpose_other"],
+                    ]);
+                    $request = $statement->fetch();
+                    $trackingUrl =
+                        APP_BASE_URL .
+                        "/document_request_status.php?id=" .
+                        (int) $request["request_id"];
+                    $emailSent = false;
+                    $emailAddress = trim(
+                        (string) ($resident["email"] ?? ""),
                     );
+                    if (
+                        $emailAddress !== "" &&
+                        filter_var($emailAddress, FILTER_VALIDATE_EMAIL)
+                    ) {
+                        $emailSent = sendEmail(
+                            $emailAddress,
+                            "Document request confirmation #" .
+                                (int) $request["request_id"],
+                            document_request_email_html(
+                                $request,
+                                $trackingUrl,
+                            ),
+                        );
+                    }
+                    if (!$emailSent) {
+                        error_log(
+                            "Document request confirmation email was not sent for request #" .
+                                (int) $request["request_id"],
+                        );
+                    }
+                    unset($_SESSION["document_request_draft"]);
+                    $_SESSION["document_request_success"] = $emailSent
+                        ? "Request submitted. A confirmation email with a tracking link was sent."
+                        : "Request submitted. Email delivery is unavailable, but you can track it below.";
+                    header("Location: document_request.php");
+                    exit();
                 }
-                if (!$emailSent) {
-                    error_log(
-                        "Document request confirmation email was not sent for request #" .
-                            (int) $request["request_id"],
-                    );
-                }
-                unset($_SESSION["document_request_draft"]);
-                $_SESSION["document_request_success"] = $emailSent
-                    ? "Request submitted. A confirmation email with a tracking link was sent."
-                    : "Request submitted. Email delivery is unavailable, but you can track it below.";
-                header("Location: document_request.php");
-                exit();
             }
         }
     }
@@ -298,6 +321,7 @@ require __DIR__ . "/includes/header.php";
     $requestError,
 ) ?></div><?php endif; ?>
             <div class="request-columns">
+                <?php if ($canRequestDocuments): ?>
                 <section class="request-card wizard-card">
                     <div class="card-heading">
                         <div>
@@ -439,6 +463,18 @@ $number
     : "Continue" ?> <i class="bi bi-arrow-right"></i></button></div>
                     </form>
                 </section>
+                <?php else: ?>
+                <section class="request-card wizard-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Document requests are locked</h2>
+                            <p>Pre-verify your National ID to submit any of the available document requests.</p>
+                        </div>
+                    </div>
+                    <p>Your account must be marked Pre-verified, Approved by staff, or have an official check recorded. Local pre-verification is not official PSA verification.</p>
+                    <a class="btn btn-primary" href="profile.php">Continue to Profile Settings</a>
+                </section>
+                <?php endif; ?>
                 <aside class="request-card active-requests">
                     <div class="card-heading">
                         <div>
@@ -485,8 +521,7 @@ $number
                 </aside>
             </div>
         </div>
-        <footer class="dashboard-footer"><span>Connect. Collaborate. Grow Together.</span><small>(c)
-                2026 Barangay Inosluban. All rights reserved.</small></footer>
+        <?php require __DIR__ . "/includes/resident_dashboard_footer.php"; ?>
     </section>
 </main>
 <?php require __DIR__ . "/includes/footer.php"; ?>

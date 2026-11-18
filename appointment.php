@@ -156,50 +156,51 @@ try {
     }
 
     $calendarAppointmentsStatement = db()->prepare(
-        "SELECT a.schedule, a.service_type,
+        "SELECT a.schedule,
+                to_char(a.schedule AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD HH24:MI:SS') AS schedule_local,
+                a.service_type,
                 s.first_name AS staff_first_name, s.last_name AS staff_last_name, s.position
          FROM appointment a
-         JOIN staff s ON s.staff_id = a.assigned_staff_id
+         LEFT JOIN staff s ON s.staff_id = a.assigned_staff_id
          WHERE a.status = 'Approved'
-           AND a.schedule >= :month_start
-           AND a.schedule < :month_end
-         ORDER BY a.schedule ASC",
+           AND (a.schedule AT TIME ZONE 'Asia/Manila') >= CAST(:month_start AS TIMESTAMP)
+           AND (a.schedule AT TIME ZONE 'Asia/Manila') < CAST(:month_end AS TIMESTAMP)
+         ORDER BY (a.schedule AT TIME ZONE 'Asia/Manila') ASC",
     );
     $calendarAppointmentsStatement->execute([
-        "month_start" => $calendarMonth->setTime(0, 0)->format("Y-m-d H:i:sP"),
+        "month_start" => $calendarMonth->setTime(0, 0)->format("Y-m-d H:i:s"),
         "month_end" => $calendarMonth
             ->modify("+1 month")
             ->setTime(0, 0)
-            ->format("Y-m-d H:i:sP"),
+            ->format("Y-m-d H:i:s"),
     ]);
     $calendarAppointments = $calendarAppointmentsStatement->fetchAll();
     $appointmentsByDay = [];
     foreach ($calendarAppointments as $calendarAppointment) {
-        $dayKey = (new DateTimeImmutable(
-            $calendarAppointment["schedule"],
-            $appTimezone,
-        ))
-            ->setTimezone($appTimezone)
-            ->format("Y-m-d");
+        $dayKey = substr((string) $calendarAppointment["schedule_local"], 0, 10);
         $appointmentsByDay[$dayKey][] = $calendarAppointment;
     }
     $selectedDayAppointments =
         $appointmentsByDay[$selectedDay->format("Y-m-d")] ?? [];
 
     $upcomingAppointmentsStatement = db()->query(
-        "SELECT a.schedule, a.service_type,
+        "SELECT a.schedule,
+                to_char(a.schedule AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD HH24:MI:SS') AS schedule_local,
+                a.service_type,
                 s.first_name AS staff_first_name, s.last_name AS staff_last_name, s.position
          FROM appointment a
-         JOIN staff s ON s.staff_id = a.assigned_staff_id
+         LEFT JOIN staff s ON s.staff_id = a.assigned_staff_id
          WHERE a.status = 'Approved'
            AND a.schedule >= CURRENT_TIMESTAMP
-         ORDER BY a.schedule ASC
+         ORDER BY (a.schedule AT TIME ZONE 'Asia/Manila') ASC
          LIMIT 6",
     );
     $upcomingAppointments = $upcomingAppointmentsStatement->fetchAll();
 
     $appointmentsStatement = db()->prepare(
-        'SELECT a.appointment_id, a.schedule, a.service_type, a.status, a.notes,
+        'SELECT a.appointment_id, a.schedule,
+                to_char(a.schedule AT TIME ZONE \'Asia/Manila\', \'YYYY-MM-DD HH24:MI:SS\') AS schedule_local,
+                a.service_type, a.status, a.notes,
                 s.first_name AS staff_first_name, s.last_name AS staff_last_name, s.position
          FROM appointment a
          LEFT JOIN staff s ON s.staff_id = a.assigned_staff_id
@@ -400,24 +401,23 @@ require __DIR__ . "/includes/header.php";
                             <article class="today-schedule-item">
                                 <span class="schedule-time"><?= e(
                                 (new DateTimeImmutable(
-                                    $appointment["schedule"],
+                                    (string) $appointment["schedule_local"],
                                     $appTimezone,
-                                ))
-                                    ->setTimezone($appTimezone)
-                                    ->format("g:i A"),
+                                ))->format("g:i A"),
                             ) ?></span>
                                 <span><strong><?= e(
                                 $appointment["service_type"],
-                            ) ?></strong><small><?=
-e(
-    trim(
+                            ) ?></strong><small><?php
+$staffName = trim(
         ($appointment["staff_first_name"] ?? "") .
             " " .
             ($appointment["staff_last_name"] ?? ""),
-    ) . ($appointment["position"]
-        ? " · " . $appointment["position"]
-        : ""),
-) ?></small></span>
+);
+echo e(
+    ($staffName !== "" ? $staffName : "Barangay staff") .
+        (!empty($appointment["position"]) ? " · " . $appointment["position"] : ""),
+);
+?></small></span>
                             </article>
                             <?php endforeach; ?>
                             <?php if (
@@ -459,9 +459,9 @@ e(
                     as $appointment
                 ): ?><tr>
                                         <td><strong><?= e(
-    (new DateTime($appointment["schedule"]))->format("M j, Y"),
+    (new DateTimeImmutable((string) $appointment["schedule_local"], $appTimezone))->format("M j, Y"),
 ) ?></strong><small><?= e(
-    (new DateTime($appointment["schedule"]))->format("g:i A"),
+    (new DateTimeImmutable((string) $appointment["schedule_local"], $appTimezone))->format("g:i A"),
 ) ?></small></td>
                                         <td><strong><i class="bi bi-file-earmark-text"></i> <?= e(
     $appointment["service_type"],
@@ -484,7 +484,7 @@ e(
                                                 class="reference-details-link appointment-details-trigger"
                                                 type="button" data-bs-toggle="modal"
                                                 data-bs-target="#appointmentDetailsModal" data-date="<?= e(
-    (new DateTime($appointment["schedule"]))->format(
+    (new DateTimeImmutable((string) $appointment["schedule_local"], $appTimezone))->format(
         'l, F j, Y \a\t g:i A',
     ),
 ) ?>" data-service="<?= e($appointment["service_type"]) ?>" data-staff="<?= e(
@@ -596,14 +596,14 @@ $service
      as $appointment
  ): ?><article class="appointment-item">
                                 <div class="appointment-date"><strong><?= e(
-    (new DateTime($appointment["schedule"]))->format("M"),
+    (new DateTimeImmutable((string) $appointment["schedule_local"], $appTimezone))->format("M"),
 ) ?></strong><b><?= e(
-    (new DateTime($appointment["schedule"]))->format("d"),
+    (new DateTimeImmutable((string) $appointment["schedule_local"], $appTimezone))->format("d"),
 ) ?></b></div>
                                 <div class="appointment-detail"><strong><?= e(
     $appointment["service_type"],
 ) ?></strong><small><?= e(
-    (new DateTime($appointment["schedule"]))->format("M j, Y · g:i A"),
+    (new DateTimeImmutable((string) $appointment["schedule_local"], $appTimezone))->format("M j, Y · g:i A"),
 ) ?> · <?= e(
      trim(
          ($appointment["staff_first_name"] ?? "") .
@@ -616,7 +616,7 @@ $service
     $appointment["status"],
 ) ?></span></div><button class="appointment-history-details" type="button" data-bs-toggle="modal"
                                     data-bs-target="#appointmentDetailsModal" data-date="<?= e(
-    (new DateTime($appointment["schedule"]))->format(
+    (new DateTimeImmutable((string) $appointment["schedule_local"], $appTimezone))->format(
         'l, F j, Y \a\t g:i A',
     ),
 ) ?>" data-service="<?= e($appointment["service_type"]) ?>" data-staff="<?= e(
@@ -655,21 +655,22 @@ foreach (
     as $appointment
 ): ?><article class="upcoming-appointment-item">
                                 <div class="upcoming-date"><strong><?= e(
-    (new DateTime($appointment["schedule"]))->format("M"),
+        (new DateTimeImmutable((string) $appointment["schedule_local"], $appTimezone))->format("M"),
 ) ?></strong><b><?= e(
-    (new DateTime($appointment["schedule"]))->format("d"),
+        (new DateTimeImmutable((string) $appointment["schedule_local"], $appTimezone))->format("d"),
 ) ?></b></div>
                                 <div><strong><?= e(
     $appointment["service_type"],
 ) ?></strong><small><?= e(
-    (new DateTime($appointment["schedule"]))->format("g:i A"),
-) ?> · <?= e(
-     trim(
+    (new DateTimeImmutable((string) $appointment["schedule_local"], $appTimezone))->format("g:i A"),
+ ) ?> · <?php
+ $upcomingStaffName = trim(
          ($appointment["staff_first_name"] ?? "") .
              " " .
              ($appointment["staff_last_name"] ?? ""),
-     ),
- ) ?></small></div>
+ ) ;
+ echo e($upcomingStaffName !== "" ? $upcomingStaffName : "Barangay staff");
+ ?></small></div>
                             </article><?php endforeach;
 if (
     $upcomingAppointments === []
@@ -698,8 +699,7 @@ if (
                 </aside>
             </div>
         </div>
-        <footer class="dashboard-footer"><span>Connect. Collaborate. Grow Together.</span><small>(c)
-                2026 Barangay Inosluban. All rights reserved.</small></footer>
+        <?php require __DIR__ . "/includes/resident_dashboard_footer.php"; ?>
     </section>
 </main>
 <div class="modal fade auth-modal appointment-details-modal" id="appointmentDetailsModal"
