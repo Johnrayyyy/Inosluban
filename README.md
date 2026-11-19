@@ -165,10 +165,7 @@ and enables PostgreSQL and cURL extensions. Configure the database, email,
 face-authentication secrets, and any optional AI/weather variables in the
 deployment environment. For Render, use a secret `.env` file or service
 environment variables, and use the database's internal URL when the services
-are in the same region. The National ID verifier is a separate private Render
-service defined in [render.yaml](./render.yaml); follow the
-[National ID deployment steps](./docs/features/NATIONAL_ID_VERIFICATION.md#deploy-the-python-verifier-on-render)
-to connect it to the PHP service without exposing the verification API publicly.
+are in the same region.
 
 ### Optional scheduled weather jobs
 

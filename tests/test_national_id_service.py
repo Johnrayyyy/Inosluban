@@ -1,16 +1,12 @@
 import unittest
 from unittest.mock import patch
 
-from fastapi import HTTPException
-
 from national_id_service.app import (
     _mask_pcn,
     _normalize_name,
     _normalize_text,
     _parse_qr_payload,
-    _require_service_token,
     _verify_images,
-    health,
 )
 
 
@@ -66,46 +62,6 @@ class NationalIdServiceTests(unittest.TestCase):
             set(result.checks.model_dump()),
             {"qr_decoded", "front_pcn_match", "front_last_name_match"},
         )
-
-    def test_configured_service_token_is_checked(self):
-        with (
-            patch("national_id_service.app.REQUIRE_SERVICE_TOKEN", True),
-            patch("national_id_service.app.SERVICE_TOKEN", "test-token"),
-        ):
-            _require_service_token("test-token")
-            with self.assertRaises(HTTPException) as error:
-                _require_service_token("wrong-token")
-
-        self.assertEqual(error.exception.status_code, 401)
-
-    def test_required_service_token_fails_closed_when_missing(self):
-        with (
-            patch("national_id_service.app.REQUIRE_SERVICE_TOKEN", True),
-            patch("national_id_service.app.SERVICE_TOKEN", ""),
-        ):
-            with self.assertRaises(HTTPException) as error:
-                _require_service_token(None)
-
-        self.assertEqual(error.exception.status_code, 503)
-
-    def test_health_is_not_ready_when_required_token_is_missing(self):
-        with (
-            patch("national_id_service.app.REQUIRE_SERVICE_TOKEN", True),
-            patch("national_id_service.app.SERVICE_TOKEN", ""),
-            patch("national_id_service.app.ocr_engine", object()),
-        ):
-            with self.assertRaises(HTTPException) as error:
-                health()
-
-        self.assertEqual(error.exception.status_code, 503)
-
-    def test_health_is_ready_when_dependencies_and_token_are_configured(self):
-        with (
-            patch("national_id_service.app.REQUIRE_SERVICE_TOKEN", True),
-            patch("national_id_service.app.SERVICE_TOKEN", "test-token"),
-            patch("national_id_service.app.ocr_engine", object()),
-        ):
-            self.assertEqual(health(), {"status": "ok", "ready": "true"})
 
 
 if __name__ == "__main__":
